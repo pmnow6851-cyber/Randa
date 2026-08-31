@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0e17">
+  <meta name="description" content="RANDA.MKCOOL AIM SYNC SYSTEM v4.3.1 RC">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>RANDA.MKCOOL AIM SYNC SYSTEM v4.3.1 RC</title>
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+  <style>
+    :root {
+      --bg-color: #0a0e17;
+      --card-bg: #121824;
+      --accent: #00f0ff;
+      --accent-hover: #00b8c4;
+      --warning: #ffb700;
+      --danger: #ff4757;
+      --success: #4cff9a;
+      --text: #e0e6ed;
+      --text-dim: #8a99ad;
+      --border: #1f293d;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text);
+      font-family: var(--font);
+      padding: 12px;
+      padding-bottom: calc(20px + env(safe-area-inset-bottom));
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .brand { font-size: 1.2rem; font-weight: 800; color: var(--accent); letter-spacing: 1px; }
+    .badge { background: var(--border); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; color: var(--text-dim); }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 0.85rem; color: var(--text-dim); }
+
+    input, select {
+      width: 100%;
+      background: var(--bg-color);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    input[type="range"] {
+      padding: 0;
+      accent-color: var(--accent);
+    }
+
+    .range-row { display: grid; grid-template-columns: 1fr 64px; align-items: center; gap: 10px; }
+    .range-value { text-align: center; font-weight: 800; color: var(--accent); border: 1px solid var(--border); padding: 8px 6px; border-radius: 6px; background: var(--bg-color); }
+
+    button {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 10px 16px;
+      font-weight: 800;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+
+    button:active { transform: translateY(1px); }
+    button.btn-secondary { background: var(--border); color: var(--text); }
+    button.btn-danger { background: var(--danger); color: #fff; }
+    button.btn-outline { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+
+    .inline-warning { color: var(--danger); font-size: 0.8rem; margin-top: 4px; display: none; }
+    .dashboard-status { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background: #080c14; padding: 12px; border-radius: 7px; margin-bottom: 12px; border-left: 4px solid var(--accent); }
+    .dashboard-status > div { min-width: 0; }
+    .result-section { margin-top: 12px; }
+    .result-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--border); padding: 8px 12px; border-radius: 5px; margin-bottom: 8px; }
+    .val-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+    .val-box { background: var(--bg-color); padding: 9px; border-radius: 5px; text-align: center; }
+    .val-label { font-size: 0.75rem; color: var(--text-dim); }
+    .val-num { font-size: 1.1rem; font-weight: 800; color: var(--accent); }
+
+    .banner-warning {
+      background: #332200;
+      border: 1px solid var(--warning);
+      color: var(--warning);
+      padding: 12px;
+      border-radius: 7px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .ad-slot {
+      min-height: 72px;
+      border: 1px dashed #34435f;
+      background: #0d1320;
+      color: var(--text-dim);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 12px;
+      margin-bottom: 16px;
+      font-size: 0.8rem;
+    }
+
+    .hidden { display: none !important; }
+
+    footer { font-size: 0.8rem; color: var(--text-dim); border-top: 1px solid var(--border); padding-top: 16px; margin-top: 24px; }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.82);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+
+    .modal-content { background: var(--card-bg); border: 1px solid var(--border); padding: 24px; border-radius: 10px; max-width: 420px; width: 100%; }
+
+    #snackbar {
+      visibility: hidden;
+      min-width: 220px;
+      max-width: calc(100vw - 32px);
+      background: #111a29;
+      color: var(--text);
+      border: 1px solid var(--accent);
+      text-align: center;
+      border-radius: 8px;
+      padding: 12px 16px;
+      position: fixed;
+      z-index: 2000;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: calc(24px + env(safe-area-inset-bottom));
+      box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+      font-weight: 700;
+    }
+
+    #snackbar.show {
+      visibility: visible;
+      animation: fadein .18s ease-out, fadeout .25s 2.25s ease-in forwards;
+    }
+
+    @keyframes fadein { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    @keyframes fadeout { from { opacity: 1; } to { opacity: 0; } }
+
+    @media (max-width: 620px) {
+      .dashboard-status { grid-template-columns: 1fr; }
+      header { align-items: flex-start; }
+      #pwa-install-btn { padding: 8px 10px; font-size: 0.78rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <div class="brand">RANDA.MKCOOL</div>
+      <div style="font-size:0.8rem;color:var(--text-dim);">AIM SYNC SYSTEM <span class="badge">v4.3.1 RC</span></div>
+    </div>
+    <button id="pwa-install-btn" class="hidden">INSTALL AIM SYNC</button>
+  </header>
+
+  <!-- Website/PWA monetisation placeholder.
+       Google AdMob SDK code cannot be dropped into a static GitHub Pages PWA.
+       Use a web-ad product for the PWA, or a native Android/Flutter build for AdMob. -->
+  <div class="ad-slot" id="ad-slot-top">MONETISATION SLOT • PWA / WEB</div>
+
+  <div id="lock-warning-banner" class="banner-warning hidden">
+    <div>⚠️ <strong>LOCKED PROFILE MODIFIED</strong></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="restoreLockedProfile()" class="btn-secondary" style="font-size:0.8rem;">RESTORE LOCKED</button>
+      <button onclick="dismissLockWarning()" class="btn-outline" style="font-size:0.8rem;">CONTINUE EDITING</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="dashboard-status">
+      <div>
+        <div style="font-size:0.75rem;color:var(--text-dim);">ACTIVE MODE</div>
+        <div id="dash-active-mode" style="font-weight:800;">MP / BR / BOTH</div>
+      </div>
+      <div>
+        <div style="font-size:0.75rem;color:var(--text-dim);">AIM SYNC SCORE</div>
+        <div id="dash-score" style="font-weight:800;color:var(--accent);">-- / 100</div>
+      </div>
+      <div>
+        <div style="font-size:0.75rem;color:var(--text-dim);">STABILITY</div>
+        <div id="dash-stability" style="font-weight:800;">STABILITY: 0 TESTS</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="generateProfile()">GENERATE AIM SYNC</button>
+      <button onclick="copyAllOutputs()" class="btn-secondary">ONE-TAP COPY CONFIG</button>
+      <button onclick="handleLockAction()" class="btn-outline" id="lock-btn">LOCK PROFILE</button>
+      <button onclick="promptResetActive()" class="btn-danger" style="margin-left:auto;">RESET</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px;font-size:1rem;color:var(--accent);">PROFILE PARAMETERS</h3>
+    <div class="grid">
+      <div class="form-group">
+        <label for="input-game-mode">Game Mode</label>
+        <select id="input-game-mode" onchange="onInputChange()">
+          <option value="Multiplayer">Multiplayer</option>
+          <option value="Battle Royale">Battle Royale</option>
+          <option value="Both" selected>Both</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="input-device">Device Profile</label>
+        <select id="input-device" onchange="onInputChange()">
+          <option value="Small Phone">Small Phone</option>
+          <option value="Medium Phone" selected>Medium Phone</option>
+          <option value="Large Phone">Large Phone</option>
+          <option value="Tablet">Tablet</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="input-base-sens">Base Sensitivity (10–300)</label>
+        <div class="range-row">
+          <input type="range" id="input-base-sens" value="90" min="10" max="300" step="1" oninput="syncRangeLabels(); onInputChange();">
+          <div class="range-value" id="base-sens-value">90</div>
+        </div>
+        <div id="warn-base-sens" class="inline-warning">Value must be between 10 and 300.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="input-fov">FOV (51–90)</label>
+        <div class="range-row">
+          <input type="range" id="input-fov" value="75" min="51" max="90" step="1" oninput="syncRangeLabels(); onInputChange();">
+          <div class="range-value" id="fov-value">75</div>
+        </div>
+        <div id="warn-fov" class="inline-warning">FOV must be between 51 and 90.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="input-rotation">Rotation Mode</label>
+        <select id="input-rotation" onchange="onInputChange()">
+          <option value="Fixed Speed">Fixed Speed</option>
+          <option value="Speed Acceleration">Speed Acceleration</option>
+          <option value="Distance Acceleration">Distance Acceleration</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="input-playstyle">Playstyle</label>
+        <select id="input-playstyle" onchange="onInputChange()">
+          <option value="Aggressive">Aggressive</option>
+          <option value="Balanced" selected>Balanced</option>
+          <option value="Tactical">Tactical</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="input-gyro">Gyroscope Mode</label>
+        <select id="input-gyro" onchange="onInputChange()">
+          <option value="Off">GYRO OFF</option>
+          <option value="ADS Only">GYRO ADS ONLY</option>
+          <option value="Always On">GYRO ALWAYS ON</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div id="results-container" class="card">
+    <h3 style="margin-bottom:12px;font-size:1rem;color:var(--accent);">GENERATED SENSITIVITY MATRIX</h3>
+
+    <div id="sec-mp-camera" class="result-section">
+      <div class="result-header"><span>MP CAMERA</span><button onclick="copySection('MP CAMERA')" class="btn-secondary" style="font-size:0.75rem;padding:4px 8px;">COPY</button></div>
+      <div class="val-grid" id="grid-mp-camera"></div>
+    </div>
+
+    <div id="sec-mp-firing" class="result-section">
+      <div class="result-header"><span>MP FIRING</span><button onclick="copySection('MP FIRING')" class="btn-secondary" style="font-size:0.75rem;padding:4px 8px;">COPY</button></div>
+      <div class="val-grid" id="grid-mp-firing"></div>
+    </div>
+
+    <div id="sec-br-camera" class="result-section">
+      <div class="result-header"><span>BR CAMERA</span><button onclick="copySection('BR CAMERA')" class="btn-secondary" style="font-size:0.75rem;padding:4px 8px;">COPY</button></div>
+      <div class="val-grid" id="grid-br-camera"></div>
+    </div>
+
+    <div id="sec-br-firing" class="result-section">
+      <div class="result-header"><span>BR FIRING</span><button onclick="copySection('BR FIRING')" class="btn-secondary" style="font-size:0.75rem;padding:4px 8px;">COPY</button></div>
+      <div class="val-grid" id="grid-br-firing"></div>
+    </div>
+
+    <div id="sec-gyro" class="result-section">
+      <div class="result-header"><span>GYROSCOPE</span><button onclick="copySection('GYROSCOPE')" class="btn-secondary" style="font-size:0.75rem;padding:4px 8px;">COPY</button></div>
+      <div id="gyro-status-msg" style="color:var(--text-dim);font-size:0.85rem;padding:8px;" class="hidden">GYRO DISABLED</div>
+      <div class="val-grid" id="grid-gyro"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px;font-size:1rem;color:var(--accent);">FEEDBACK RECALIBRATION</h3>
+    <div class="grid">
+      <div class="form-group">
+        <label for="recal-close">Close-Range Control</label>
+        <select id="recal-close">
+          <option value="balanced">Balanced / On-Target</option>
+          <option value="too_slow">Too Slow</option>
+          <option value="too_fast">Too Fast</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="recal-long">Long-Range Precision</label>
+        <select id="recal-long">
+          <option value="balanced">Balanced / On-Target</option>
+          <option value="too_slow">Too Slow</option>
+          <option value="too_fast">Too Fast</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="recal-recoil">Vertical Recoil Control</label>
+        <select id="recal-recoil">
+          <option value="balanced">Solid Control</option>
+          <option value="under_control">Pulling Up</option>
+          <option value="over_control">Pulling Down</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="applyRecalibration()" style="margin-top:12px;">APPLY RECALIBRATION PASS</button>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-bottom:12px;font-size:1rem;color:var(--accent);">DATA MANAGEMENT</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="exportJSON()" class="btn-secondary">EXPORT BACKUP (JSON)</button>
+      <button onclick="document.getElementById('import-file').click()" class="btn-secondary">IMPORT BACKUP</button>
+      <input type="file" id="import-file" class="hidden" accept=".json,application/json" onchange="importJSON(event)">
+      <button onclick="promptClearAll()" class="btn-danger" style="margin-left:auto;">CLEAR APP DATA</button>
+    </div>
+  </div>
+
+  <div class="ad-slot" id="ad-slot-bottom">MONETISATION SLOT • PWA / WEB</div>
+
+  <footer class="card">
+    <p><strong>RANDA.MKCOOL AIM SYNC SYSTEM v4.3.1 RC</strong> | BUILD TYPE: PWA RELEASE CANDIDATE</p>
+    <p style="margin-top:6px;">Calculated starting profiles plus feedback-based recalibration. Test changes in-game before treating any profile as final.</p>
+  </footer>
+
+  <div id="modal-container" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h3 id="modal-title" style="margin-bottom:8px;color:var(--accent);">CONFIRMATION</h3>
+      <p id="modal-body" style="font-size:0.9rem;margin-bottom:16px;color:var(--text-dim);"></p>
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button id="modal-cancel-btn" class="btn-secondary">CANCEL</button>
+        <button id="modal-confirm-btn" class="btn-danger">CONFIRM</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="snackbar" role="status" aria-live="polite"></div>
+
+  <script>
+    const SCOPES = ['Standard', 'RedDot', 'ADS', 'Tactical', 'Scope3x', 'Scope4x', 'Scope6x', 'Scope8x', 'Sniper'];
+    const STORAGE_KEYS = {
+      active: 'AIM_SYNC_ACTIVE',
+      locked: 'AIM_SYNC_LOCKED',
+      history: 'AIM_SYNC_HISTORY'
+    };
+
+    let activeProfile = null;
+    let lockedProfile = null;
+    let recalibrationHistory = [];
+    let deferredPrompt = null;
+    let snackbarTimer = null;
+
+    function clamp(val) {
+      return Math.min(300, Math.max(1, Math.round(val)));
+    }
+
+    function syncRangeLabels() {
+      document.getElementById('base-sens-value').textContent = document.getElementById('input-base-sens').value;
+      document.getElementById('fov-value').textContent = document.getElementById('input-fov').value;
+    }
+
+    function showSnack(message) {
+      const el = document.getElementById('snackbar');
+      el.textContent = message;
+      el.classList.remove('show');
+      void el.offsetWidth;
+      el.classList.add('show');
+      clearTimeout(snackbarTimer);
+      snackbarTimer = setTimeout(() => el.classList.remove('show'), 2600);
+    }
+
+    async function copyText(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (_) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+        return ok;
+      }
+    }
+
+    function validateInputs() {
+      const baseSens = Number(document.getElementById('input-base-sens').value);
+      const fov = Number(document.getElementById('input-fov').value);
+      let isValid = true;
+
+      if (!Number.isFinite(baseSens) || baseSens < 10 || baseSens > 300) {
+        document.getElementById('warn-base-sens').style.display = 'block';
+        isValid = false;
+      } else {
+        document.getElementById('warn-base-sens').style.display = 'none';
+      }
+
+      if (!Number.isFinite(fov) || fov < 51 || fov > 90) {
+        document.getElementById('warn-fov').style.display = 'block';
+        isValid = false;
+      } else {
+        document.getElementById('warn-fov').style.display = 'none';
+      }
+
+      return isValid;
+    }
+
+    function onInputChange() {
+      if (lockedProfile) document.getElementById('lock-warning-banner').classList.remove('hidden');
+    }
+
+    function dismissLockWarning() {
+      document.getElementById('lock-warning-banner').classList.add('hidden');
+    }
+
+    function calculateMatrix(baseSens, fov, playstyle, gyroMode, device, rotation) {
+      const fovScale = 75 / fov;
+      const styleMult = playstyle === 'Aggressive' ? 1.15 : playstyle === 'Tactical' ? 0.88 : 1.0;
+      const deviceMult = {
+        'Small Phone': 1.05,
+        'Medium Phone': 1.00,
+        'Large Phone': 0.96,
+        'Tablet': 0.91
+      }[device] || 1.0;
+      const rotationMult = {
+        'Fixed Speed': 1.00,
+        'Speed Acceleration': 0.94,
+        'Distance Acceleration': 0.97
+      }[rotation] || 1.0;
+
+      const mpCamera = {}, mpFiring = {}, brCamera = {}, brFiring = {}, gyro = {};
+      const baseMap = {
+        Standard: 1.00,
+        RedDot: 1.20,
+        ADS: 1.10,
+        Tactical: 1.35,
+        Scope3x: 1.50,
+        Scope4x: 1.80,
+        Scope6x: 2.20,
+        Scope8x: 2.60,
+        Sniper: 1.45
+      };
+
+      SCOPES.forEach(scope => {
+        const mult = baseMap[scope];
+        const cameraBase = baseSens * mult * fovScale * styleMult * deviceMult * rotationMult;
+        mpCamera[scope] = clamp(cameraBase);
+        mpFiring[scope] = clamp(mpCamera[scope] * 1.08);
+        brCamera[scope] = clamp(mpCamera[scope] * 1.05);
+        brFiring[scope] = clamp(brCamera[scope] * 1.10);
+
+        if (gyroMode !== 'Off') {
+          gyro[scope] = (gyroMode === 'ADS Only' && scope === 'Standard')
+            ? 0
+            : clamp(mpCamera[scope] * 1.85);
+        }
+      });
+
+      return { mpCamera, mpFiring, brCamera, brFiring, gyro };
+    }
+
+    function calculateAimSyncScore(inputs) {
+      let score = 80;
+      if (inputs.fov >= 65 && inputs.fov <= 82) score += 6;
+      if (inputs.baseSens >= 60 && inputs.baseSens <= 150) score += 6;
+      if (inputs.rotation === 'Fixed Speed') score += 4;
+      if (inputs.gyroMode === 'Always On') score += 4;
+      return Math.min(100, score);
+    }
+
+    function generateProfile() {
+      if (!validateInputs()) return;
+
+      const inputs = {
+        gameMode: document.getElementById('input-game-mode').value,
+        device: document.getElementById('input-device').value,
+        baseSens: Number(document.getElementById('input-base-sens').value),
+        fov: Number(document.getElementById('input-fov').value),
+        rotation: document.getElementById('input-rotation').value,
+        playstyle: document.getElementById('input-playstyle').value,
+        gyroMode: document.getElementById('input-gyro').value
+      };
+
+      const matrix = calculateMatrix(
+        inputs.baseSens,
+        inputs.fov,
+        inputs.playstyle,
+        inputs.gyroMode,
+        inputs.device,
+        inputs.rotation
+      );
+
+      const previousTests = activeProfile?.stabilityTests || 0;
+
+      activeProfile = {
+        inputs,
+        outputs: matrix,
+        score: calculateAimSyncScore(inputs),
+        stabilityTests: previousTests,
+        timestamp: new Date().toISOString()
+      };
+
+      saveState();
+      dismissLockWarning();
+      renderUI();
+      showSnack('Aim Sync profile generated');
+    }
+
+    function renderUI() {
+      if (!activeProfile) return;
+
+      const { inputs, outputs, score, stabilityTests } = activeProfile;
+      document.getElementById('dash-active-mode').textContent =
+        inputs.gameMode === 'Multiplayer' ? 'MP' :
+        inputs.gameMode === 'Battle Royale' ? 'BR' : 'BOTH';
+
+      const statusTier = score >= 90 ? 'LOCKED' : score >= 80 ? 'STRONG' : score >= 70 ? 'BALANCED' : 'RECALIBRATE';
+      document.getElementById('dash-score').textContent = `${score} / 100 (${statusTier})`;
+      document.getElementById('dash-stability').textContent =
+        `STABILITY: ${stabilityTests} TESTS` + (stabilityTests >= 3 ? ' • AIM LOCK ACHIEVED' : '');
+
+      const showMP = inputs.gameMode === 'Multiplayer' || inputs.gameMode === 'Both';
+      const showBR = inputs.gameMode === 'Battle Royale' || inputs.gameMode === 'Both';
+
+      document.getElementById('sec-mp-camera').style.display = showMP ? 'block' : 'none';
+      document.getElementById('sec-mp-firing').style.display = showMP ? 'block' : 'none';
+      document.getElementById('sec-br-camera').style.display = showBR ? 'block' : 'none';
+      document.getElementById('sec-br-firing').style.display = showBR ? 'block' : 'none';
+
+      renderValGrid('grid-mp-camera', outputs.mpCamera);
+      renderValGrid('grid-mp-firing', outputs.mpFiring);
+      renderValGrid('grid-br-camera', outputs.brCamera);
+      renderValGrid('grid-br-firing', outputs.brFiring);
+
+      if (inputs.gyroMode === 'Off') {
+        document.getElementById('gyro-status-msg').classList.remove('hidden');
+        document.getElementById('grid-gyro').innerHTML = '';
+      } else {
+        document.getElementById('gyro-status-msg').classList.add('hidden');
+        renderValGrid('grid-gyro', outputs.gyro);
+      }
+
+      document.getElementById('lock-btn').textContent = lockedProfile ? 'UNLOCK PROFILE' : 'LOCK PROFILE';
+    }
+
+    function renderValGrid(elementId, dataObj) {
+      const container = document.getElementById(elementId);
+      container.innerHTML = '';
+      if (!dataObj) return;
+
+      Object.entries(dataObj).forEach(([key, val]) => {
+        const box = document.createElement('div');
+        box.className = 'val-box';
+
+        const label = document.createElement('div');
+        label.className = 'val-label';
+        label.textContent = key;
+
+        const value = document.createElement('div');
+        value.className = 'val-num';
+        value.textContent = val;
+
+        box.append(label, value);
+        container.appendChild(box);
+      });
+    }
+
+    function adjust(obj, scopes, factor) {
+      if (!obj) return;
+      scopes.forEach(scope => {
+        if (obj[scope] !== undefined) obj[scope] = clamp(obj[scope] * factor);
+      });
+    }
+
+    function applyRecalibration() {
+      if (!activeProfile) {
+        showSnack('Generate a profile first');
+        return;
+      }
+
+      const c = document.getElementById('recal-close').value;
+      const l = document.getElementById('recal-long').value;
+      const v = document.getElementById('recal-recoil').value;
+      let stable = true;
+
+      const closeScopes = ['Standard', 'RedDot', 'ADS'];
+      const longScopes = ['Tactical', 'Scope3x', 'Scope4x', 'Scope6x', 'Scope8x', 'Sniper'];
+
+      const cameraMaps = [activeProfile.outputs.mpCamera, activeProfile.outputs.brCamera];
+      const firingMaps = [activeProfile.outputs.mpFiring, activeProfile.outputs.brFiring];
+
+      if (c === 'too_slow') { cameraMaps.forEach(m => adjust(m, closeScopes, 1.05)); stable = false; }
+      if (c === 'too_fast') { cameraMaps.forEach(m => adjust(m, closeScopes, 0.95)); stable = false; }
+      if (l === 'too_slow') { cameraMaps.forEach(m => adjust(m, longScopes, 1.05)); stable = false; }
+      if (l === 'too_fast') { cameraMaps.forEach(m => adjust(m, longScopes, 0.95)); stable = false; }
+      if (v === 'under_control') { firingMaps.forEach(m => adjust(m, SCOPES, 1.06)); stable = false; }
+      if (v === 'over_control') { firingMaps.forEach(m => adjust(m, SCOPES, 0.94)); stable = false; }
+
+      if (activeProfile.inputs.gyroMode !== 'Off') {
+        if (c === 'too_slow') adjust(activeProfile.outputs.gyro, closeScopes, 1.03);
+        if (c === 'too_fast') adjust(activeProfile.outputs.gyro, closeScopes, 0.97);
+        if (l === 'too_slow') adjust(activeProfile.outputs.gyro, longScopes, 1.03);
+        if (l === 'too_fast') adjust(activeProfile.outputs.gyro, longScopes, 0.97);
+      }
+
+      activeProfile.stabilityTests = stable ? (activeProfile.stabilityTests + 1) : 0;
+      recalibrationHistory.push({
+        timestamp: new Date().toISOString(),
+        selections: { close: c, long: l, recoil: v },
+        score: activeProfile.score
+      });
+
+      saveState();
+      renderUI();
+      showSnack(stable ? 'Stable test recorded' : 'Recalibration applied');
+    }
+
+    function sectionMap(sectionName) {
+      if (!activeProfile) return null;
+      return sectionName === 'MP CAMERA' ? activeProfile.outputs.mpCamera :
+        sectionName === 'MP FIRING' ? activeProfile.outputs.mpFiring :
+        sectionName === 'BR CAMERA' ? activeProfile.outputs.brCamera :
+        sectionName === 'BR FIRING' ? activeProfile.outputs.brFiring :
+        activeProfile.outputs.gyro;
+    }
+
+    function formatMap(title, map) {
+      if (!map) return '';
+      return `${title}\n` + Object.entries(map).map(([k, v]) => `${k}: ${v}`).join('\n');
+    }
+
+    async function copySection(sectionName) {
+      if (!activeProfile) return;
+      const map = sectionMap(sectionName);
+      const payload = `RANDA.MKCOOL AIM SYNC • ${sectionName}\n\n${formatMap(sectionName, map)}`;
+      const ok = await copyText(payload);
+      showSnack(ok ? `${sectionName} copied` : 'Copy failed');
+    }
+
+    async function copyAllOutputs() {
+      if (!activeProfile) {
+        showSnack('Generate a profile first');
+        return;
+      }
+
+      const p = activeProfile;
+      const blocks = [
+        'RANDA.MKCOOL AIM SYNC CONFIG',
+        `Mode: ${p.inputs.gameMode}`,
+        `Device: ${p.inputs.device}`,
+        `Base Sensitivity: ${p.inputs.baseSens}`,
+        `FOV: ${p.inputs.fov}`,
+        `Rotation: ${p.inputs.rotation}`,
+        `Playstyle: ${p.inputs.playstyle}`,
+        `Gyroscope: ${p.inputs.gyroMode}`,
+        '',
+        formatMap('MP CAMERA', p.outputs.mpCamera),
+        '',
+        formatMap('MP FIRING', p.outputs.mpFiring),
+        '',
+        formatMap('BR CAMERA', p.outputs.brCamera),
+        '',
+        formatMap('BR FIRING', p.outputs.brFiring)
+      ];
+
+      if (p.inputs.gyroMode !== 'Off') {
+        blocks.push('', formatMap('GYROSCOPE', p.outputs.gyro));
+      }
+
+      const ok = await copyText(blocks.join('\n'));
+      showSnack(ok ? 'Complete config copied' : 'Copy failed');
+    }
+
+    function handleLockAction() {
+      if (!activeProfile) {
+        showSnack('Generate a profile first');
+        return;
+      }
+
+      if (lockedProfile) {
+        lockedProfile = null;
+        dismissLockWarning();
+        saveState();
+        renderUI();
+        showSnack('Profile unlocked');
+        return;
+      }
+
+      lockedProfile = JSON.parse(JSON.stringify(activeProfile));
+      saveState();
+      renderUI();
+      showSnack('Profile locked');
+    }
+
+    function restoreLockedProfile() {
+      if (!lockedProfile) return;
+      activeProfile = JSON.parse(JSON.stringify(lockedProfile));
+      dismissLockWarning();
+      saveState();
+      renderUI();
+      showSnack('Locked profile restored');
+    }
+
+    function exportJSON() {
+      if (!activeProfile) {
+        showSnack('Nothing to export');
+        return;
+      }
+
+      const payload = {
+        version: 'v4.3.1 RC',
+        activeProfile,
+        lockedProfile,
+        recalibrationHistory
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'RANDA_AIM_SYNC_BACKUP.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showSnack('Backup exported');
+    }
+
+    function importJSON(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed.activeProfile || !parsed.activeProfile.inputs || !parsed.activeProfile.outputs) {
+            throw new Error('Missing active profile');
+          }
+          activeProfile = parsed.activeProfile;
+          lockedProfile = parsed.lockedProfile || null;
+          recalibrationHistory = Array.isArray(parsed.recalibrationHistory) ? parsed.recalibrationHistory : [];
+          saveState();
+          renderUI();
+          showSnack('Backup imported');
+        } catch (err) {
+          showSnack('Invalid backup file');
+        } finally {
+          event.target.value = '';
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEYS.active, JSON.stringify(activeProfile));
+      localStorage.setItem(STORAGE_KEYS.locked, JSON.stringify(lockedProfile));
+      localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(recalibrationHistory));
+    }
+
+    function loadState() {
+      try {
+        const act = localStorage.getItem(STORAGE_KEYS.active);
+        const lock = localStorage.getItem(STORAGE_KEYS.locked);
+        const history = localStorage.getItem(STORAGE_KEYS.history);
+
+        if (act) activeProfile = JSON.parse(act);
+        if (lock) lockedProfile = JSON.parse(lock);
+        if (history) recalibrationHistory = JSON.parse(history);
+
+        if (activeProfile) {
+          const i = activeProfile.inputs;
+          document.getElementById('input-game-mode').value = i.gameMode || 'Both';
+          document.getElementById('input-device').value = i.device || 'Medium Phone';
+          document.getElementById('input-base-sens').value = i.baseSens ?? 90;
+          document.getElementById('input-fov').value = i.fov ?? 75;
+          document.getElementById('input-rotation').value = i.rotation || 'Fixed Speed';
+          document.getElementById('input-playstyle').value = i.playstyle || 'Balanced';
+          document.getElementById('input-gyro').value = i.gyroMode || 'Off';
+          syncRangeLabels();
+          renderUI();
+        } else {
+          generateProfile();
+        }
+      } catch (e) {
+        activeProfile = null;
+        lockedProfile = null;
+        recalibrationHistory = [];
+        generateProfile();
+      }
+    }
+
+    function promptResetActive() {
+      if (!confirm('Reset the active profile using the current input values?')) return;
+      activeProfile = null;
+      generateProfile();
+    }
+
+    function promptClearAll() {
+      if (!confirm('Clear all RANDA.MKCOOL Aim Sync local data on this device?')) return;
+      Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+      activeProfile = null;
+      lockedProfile = null;
+      recalibrationHistory = [];
+      document.getElementById('input-game-mode').value = 'Both';
+      document.getElementById('input-device').value = 'Medium Phone';
+      document.getElementById('input-base-sens').value = 90;
+      document.getElementById('input-fov').value = 75;
+      document.getElementById('input-rotation').value = 'Fixed Speed';
+      document.getElementById('input-playstyle').value = 'Balanced';
+      document.getElementById('input-gyro').value = 'Off';
+      syncRangeLabels();
+      generateProfile();
+      showSnack('Aim Sync app data cleared');
+    }
+
+    if ('serviceWorker' in navigator &&
+        (location.protocol === 'https:' ||
+         location.hostname === 'localhost' ||
+         location.hostname === '127.0.0.1')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+          .catch(err => console.warn('Service Worker registration failed:', err));
+      });
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('pwa-install-btn').classList.remove('hidden');
+    });
+
+    document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+      if (!deferredPrompt) {
+        showSnack('Use browser menu → Install app');
+        return;
+      }
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      document.getElementById('pwa-install-btn').classList.add('hidden');
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredPrompt = null;
+      document.getElementById('pwa-install-btn').classList.add('hidden');
+      showSnack('Aim Sync installed');
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      syncRangeLabels();
+      loadState();
+    });
+  </script>
+</body>
+</html>
