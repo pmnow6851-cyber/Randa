@@ -1,0 +1,43 @@
+# RANDA.MKCOOL security guardrails
+# Never commit secrets, signing keys, local credentials, or generated private files.
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+*.key
+*.secret
+secrets/
+private/
+
+# Android signing / Firebase admin
+*.jks
+*.keystore
+key.properties
+service-account*.json
+firebase-admin*.json
+
+# Supabase / Stripe backend secrets
+.supabase/
+supabase/.temp/
+
+# Local tooling / IDE
+.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Build outputs
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Logs / exports that can contain data
+*.log
+*.bak
+*.backup
+*.zip
