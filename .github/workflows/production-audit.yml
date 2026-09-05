@@ -1,0 +1,163 @@
+name: RANDA Production Audit
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '15 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: randa-production-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v4
+
+      - name: Validate required production files
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in index.html manifest.webmanifest service-worker.js CNAME; do
+            test -s "$file" || { echo "Missing required file: $file"; exit 1; }
+          done
+
+          test "$(tr -d '\r\n ' < CNAME)" = "randa-aim-sync.com" || {
+            echo "CNAME does not match the official domain";
+            exit 1;
+          }
+
+      - name: Validate manifest and service worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          with open('manifest.webmanifest', encoding='utf-8') as f:
+              data = json.load(f)
+          required = ['name', 'short_name', 'start_url', 'display', 'icons']
+          missing = [k for k in required if not data.get(k)]
+          if missing:
+              raise SystemExit(f'Manifest missing required values: {missing}')
+          print('Manifest JSON: OK')
+          PY
+
+          node --check service-worker.js
+          grep -q "serviceWorker" index.html || {
+            echo "Service worker registration not found in index.html";
+            exit 1;
+          }
+
+      - name: Scan tracked source for high-risk secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          pattern='(sk_live_[A-Za-z0-9]{16,}|whsec_[A-Za-z0-9]{16,}|sb_secret_[A-Za-z0-9_-]{16,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)'
+          if grep -RInE "$pattern" . \
+            --exclude-dir=.git \
+            --exclude='*.png' \
+            --exclude='*.jpg' \
+            --exclude='*.jpeg' \
+            --exclude='*.webp'; then
+            echo "High-risk secret pattern detected in tracked source"
+            exit 1
+          fi
+          echo "Secret pattern scan: OK"
+
+      - name: Check official production endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            --max-time 25 \
+            --retry 2 \
+            --retry-delay 3 \
+            --retry-all-errors \
+            https://randa-aim-sync.com/ > /tmp/randa-home.html
+
+          test -s /tmp/randa-home.html || {
+            echo "Official endpoint returned an empty response"
+            exit 1
+          }
+
+      - name: Open or update production incident on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'AUTOMATED AUDIT: Production health check failed';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              'The automated RANDA.MKCOOL production audit failed.',
+              '',
+              `Workflow run: ${runUrl}`,
+              '',
+              'Check the failed step before changing pricing, payment routing, security rules, or the canonical app.'
+            ].join('\n');
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const existing = issues.find(
+              issue => !issue.pull_request && issue.title === title
+            );
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body
+              });
+            }
+
+      - name: Close production incident after recovery
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'AUTOMATED AUDIT: Production health check failed';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            for (const issue of issues) {
+              if (!issue.pull_request && issue.title === title) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: 'Automated production audit is healthy again. Closing this incident.'
+                });
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  state: 'closed'
+                });
+              }
+            }
