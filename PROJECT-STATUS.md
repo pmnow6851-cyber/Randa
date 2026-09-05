@@ -2,56 +2,80 @@
 
 ## Canonical production app
 
-**RANDA.MKCOOL AIM SYNC SYSTEM** on Replit is the single active application and the only build that should receive product changes.
+**RANDA.MKCOOL sensitivity calculator** in Base44 is the single canonical application build.
 
-Public app URL:
-https://randamkcool-aim-sync-system--paulmoran6851.replit.app
+Canonical Base44 app ID:
+`69b1df3fb4cc4001bac5c543`
+
+Target public domain:
+`randa-aim-sync.com`
+
+Current launch state: **PAYMENT_CONFIGURATION_REQUIRED**.
+
+Do not create or promote a second production app while this canonical build remains active.
 
 ## GitHub role
 
-This repository is the project vault / backup and GitHub Pages deployment target.
+This repository is the project vault, backup and static PWA fallback. It is not a second source of truth.
 
-Custom domain reserved in `CNAME`:
+The `CNAME` reserves:
 `randa-aim-sync.com`
 
-The current static files in this repository are an older v4.3.1 RC backup. Do not treat them as newer than the canonical Replit build unless they are deliberately refreshed from it.
+The static PWA files are an older v4.3.1 RC fallback and must not silently overwrite the canonical Base44 build.
 
 ## Supabase role
 
-Use the single existing project named **RANDA.MKCOOL Aim Sync** as the only backend if remote accounts, saved profiles, entitlements, or purchase claims are activated later.
+Use the single existing project named **RANDA.MKCOOL Aim Sync** as the only Supabase backend.
 
-Current status at consolidation:
+Current verified state:
+- project status: active and healthy
 - security advisor: no warnings
-- public app tables exist and have authenticated RLS policies
-- `profiles`: 0 rows
-- `aim_configs`: 0 rows
-- `access_entitlements`: 0 rows
-- `purchase_claims`: 0 rows
-- the current Replit frontend is local-first and is not connected to Supabase
+- RLS enabled on user-facing tables
+- Stripe checkout and webhook Edge Functions exist
+- Stripe webhook signature verification is enabled in code
+- payment verification currently expects the existing live £4.99 Stripe price
 
-Do not create a second backend unless the canonical project is intentionally retired.
+Do not create a second Supabase backend unless this project is intentionally retired.
 
-## Legacy / archive-only apps
+## Stripe role
 
-Do not publish, monetise, or treat these as source-of-truth builds:
-- Replit: `Aim Sync Lab`
-- Replit: `Aim Recalibrator`
-- Base44: `RANDA.MKCOOL sensitivity calculator`
-- Base44: `Randa`
+Use one Stripe account and one one-time Aim Sync purchase path.
 
-Keep them only as recoverable references until their useful ideas have been reviewed or merged into the canonical app.
+Current verified state:
+- live card charges are enabled
+- payouts are enabled to the configured UK bank account
+- application offer target is £9.99 one-time
+- the only currently verified active live Stripe price for the product is £4.99
+- checkout must remain disabled until the live Stripe £9.99 price and webhook verification amount/price ID match exactly
+
+Never grant premium access from a client-side flag, redirect alone, or unverified payment reference. Entitlements must come from the verified Stripe webhook/backend path.
+
+## Legacy / archive-only builds
+
+Do not publish or monetise these as separate products:
+- Replit RANDA.MKCOOL AIM SYNC SYSTEM build
+- Replit Aim Sync Lab
+- Replit Aim Recalibrator
+- Base44 `Randa`
+- older AimCurve copies
+
+Preserve them only as recoverable references until unique data has been verified.
 
 ## Consolidation rules
 
-1. One active product: RANDA.MKCOOL AIM SYNC SYSTEM.
-2. One public production URL at a time.
-3. One GitHub repository as the code vault / backup.
-4. One Supabase project only.
-5. Never put private addresses, bank details, private API keys, service-role keys, passwords, signing keys, or other secrets in client code or this repository.
-6. Do not add a payment or unlock link until the exact receiving account and live link have been verified. Once verified, use one official payment path only.
-7. Free-tier first. Do not upgrade Base44 or another builder merely to inspect or maintain legacy copies.
-8. Generated build output is not source-of-truth and should not be hand-edited.
+1. One canonical app build.
+2. One official public domain.
+3. One GitHub repository as code vault / fallback.
+4. One Supabase backend.
+5. One Stripe purchase path.
+6. No private addresses, bank details, private API keys, service-role keys, passwords, signing keys or account identity records in public/client configuration.
+7. No checkout activation until price, webhook and entitlement verification agree.
+8. Free-tier first. Do not upgrade a builder merely to inspect legacy copies.
+9. Automated audits may report and block unsafe releases, but must never silently change sensitivity logic, pricing, payout destinations or security policy.
 
-## Current consolidation work
+## Current blockers before public production launch
 
-The canonical Replit app is being hardened to fix standalone production builds, PWA path handling, offline caching, local-storage failure handling, clipboard verification, import validation, profile-lock consistency, desktop layout, and redundant scaffold dependencies while preserving the existing calculator behavior and local user data.
+- `randa-aim-sync.com` DNS is not currently resolving.
+- £9.99 live Stripe price is not yet present/verified; current live product price is £4.99.
+- Base44 checkout is intentionally disabled until that mismatch is fixed.
+- GitHub fallback remains RC-labelled and should not be mistaken for the current canonical build.
