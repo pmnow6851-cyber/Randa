@@ -1,6 +1,11 @@
 name: RANDA.MKCOOL OS Daily Audit
 
 on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'DAILY_AUDIT_REPORT.md'
+      - 'audit-log.md'
   schedule:
     - cron: '0 2 * * *'
   workflow_dispatch:
