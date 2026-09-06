@@ -31,43 +31,53 @@ The calculation method is intentionally absent from the public GitHub front-end 
 
 Do not move the calculation coefficients or method back into public browser JavaScript.
 
-## Supabase role
+## Supabase production role
 
 Use the single existing project named **RANDA.MKCOOL Aim Sync** as the only production backend.
 
-Verified production state:
+Current production state:
 - project status: active and healthy
 - security advisor: no warnings
 - RLS enabled on user-facing tables
-- Stripe checkout Edge Function active
-- Stripe webhook Edge Function active
-- paid calculation Edge Function active
-- system health Edge Function active
-- checkout and calculation functions explicitly validate the user JWT inside the function
-- browser CORS preflight is supported before authenticated processing
+- `create-checkout-session` active
+- `verify-checkout-return` active
+- `calculate-aim-sync` active
+- `system-health` active
+- `stripe-webhook` retained as a secondary event handler
+- checkout and calculation functions explicitly validate the user inside the function
+- browser CORS is restricted to the canonical GitHub Pages host, the future approved custom domain, and local development
+- Base44 origins are not permitted to create production checkout sessions or call the paid calculation engine
 
-Do not create a second Supabase backend unless this project is intentionally retired.
+## Stripe payment path
 
-## Stripe role
+Use the single live **RandaMkCool.Systems** Stripe account and the official Aim Sync checkout path.
 
-Use the single live RandaMkCool.Systems Stripe account and one one-time Aim Sync purchase path.
+Approved customer price:
+- **£9.99 GBP one-time**
 
-Production payment path:
-- price shown to customer: **£9.99 GBP one-time**
-- Checkout creates the £9.99 amount server-side
-- customer identity is tied to the signed-in Supabase user ID
-- webhook verifies paid status, mode, amount, currency and product metadata
-- successful verified payment grants active `pro` entitlement
-- full refund revokes the entitlement
-- the old £4.99 Stripe price object is not used by the live checkout path
+Official production flow:
+1. Signed-in customer starts checkout from the canonical GitHub Pages app.
+2. Supabase creates the £9.99 Stripe Checkout Session server-side.
+3. Stripe returns the successful session to `verify-checkout-return`.
+4. Supabase retrieves the Checkout Session directly from Stripe and verifies paid status, mode, amount, currency, product metadata and customer user ID.
+5. Only a valid £9.99 GBP payment grants the `pro` entitlement.
+6. The paid calculation function periodically re-verifies the Stripe Checkout Session and associated charge. A fully refunded payment is rejected and paid access is revoked.
 
-Never grant premium access from a client-side flag, redirect alone, or unverified payment reference.
+This server-verified return path is the primary unlock mechanism and does not rely on a client-side success flag.
+
+The existing `stripe-webhook` function remains available for future direct Stripe webhook delivery, but a live Stripe webhook endpoint is not currently required for the primary unlock path.
+
+## Legacy Stripe Payment Link
+
+A separate legacy **£4.99** Stripe Payment Link still exists in the Stripe account and is not part of production Aim Sync.
+
+It is not referenced by the canonical app, has no valid production entitlement metadata, and cannot unlock the paid calculator. It should be deactivated in Stripe as soon as write access is available so there is only one customer payment route.
 
 ## Base44 role
 
 Base44 app ID `69b1df3fb4cc4001bac5c543` is retained only as a secondary locked builder/reference.
 
-It is not the canonical customer checkout or calculation engine. Its configuration is marked `free_access=false`, and it must not provide a free calculator or become a second production payment path.
+It is not the canonical checkout or calculation engine and is not permitted as a production origin for checkout or calculation calls.
 
 ## Legacy / archive-only builds
 
@@ -86,17 +96,15 @@ Preserve them only as recoverable references until unique data has been verified
 2. No free calculator access or free sensitivity outputs.
 3. One GitHub repository as front-end source-of-truth and backup vault.
 4. One private Supabase calculation/payment backend.
-5. One Stripe purchase path at £9.99 GBP one-time.
+5. One approved customer price: £9.99 GBP one-time.
 6. No calculation method in public front-end code.
 7. No private addresses, bank details, private API keys, service-role keys, passwords, signing keys or account identity records in public/client configuration.
-8. Entitlements come only from verified server-side payment state.
-9. Refunds revoke paid access.
-10. Automated audits may report and block unsafe releases, but must never silently alter pricing, payout destination, entitlement policy or calculation logic.
+8. Entitlements come only from server-verified Stripe payment state.
+9. Full refunds revoke paid access.
+10. Base44 and legacy builds cannot create production checkout sessions or retrieve paid calculations.
+11. Automated audits may report and block unsafe releases, but must never silently alter pricing, payout destination, entitlement policy or calculation logic.
 
-## Autonomous audit
+## Remaining external items
 
-The daily **RANDA Live Self-Audit** checks the deployment, public route, Supabase security, system health, Stripe £9.99 path, entitlement architecture, Base44 bypass risk, stale caching, public formula leakage and deployment drift.
-
-## Remaining external item
-
-`randa-aim-sync.com` remains disabled until its registrar/DNS records are fixed and verified. Until then, the GitHub Pages URL above is the canonical public route.
+- Deactivate the legacy £4.99 Stripe Payment Link.
+- Keep `randa-aim-sync.com` disabled until registrar/DNS records are fixed and verified.
