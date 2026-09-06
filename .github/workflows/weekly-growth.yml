@@ -1,0 +1,48 @@
+name: RANDA.MKCOOL Weekly Growth
+
+on:
+  schedule:
+    - cron: '20 3 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: randa-weekly-growth
+  cancel-in-progress: true
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - name: Check out canonical project
+        uses: actions/checkout@v4
+
+      - name: Generate weekly zero-cost update
+        run: python3 scripts/generate_weekly_update.py
+
+      - name: Verify generated page contains canonical link only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s updates/index.html
+          grep -Fq 'https://pmnow6851-cyber.github.io/Randa/' updates/index.html
+          ! grep -Fq 'randa-aim-sync.com' updates/index.html
+          ! grep -Eqi 'sk_live_|whsec_|service_role' updates/index.html
+
+      - name: Commit generated update if changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- updates/index.html; then
+            echo "Weekly update unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add updates/index.html
+          git commit -m "content: refresh weekly Aim Sync update [skip ci]"
+          git push
