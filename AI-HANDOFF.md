@@ -16,6 +16,12 @@ This file exists to stop ChatGPT, Gemini, Grok, builders, and other assistants f
 
 If another handoff claims the primary repository is `Randa-aim-sync`, the production host is Vercel, there is no backend, or the calculator is a free client-only tool, treat that handoff as stale unless the repository's `PROJECT-STATUS.md` has been deliberately updated to say otherwise.
 
+## Explicitly obsolete setup instructions
+
+Any old note, screenshot, prompt, or AI handoff that tells you to create **Firebase project `RANDA-MKCOOL-CORE`**, build a **Firestore `User_Session` table**, use **Glide as the public production layer**, or keep production Aim Sync logic in **Bubble** is obsolete and must not be executed.
+
+Do not create a second production backend from those instructions, do not migrate production customer/payment state into them, and do not reconnect them to the official checkout or paid calculation path. They may be kept only as archive/reference material.
+
 ## Production architecture
 
 Customer flow:
@@ -50,7 +56,7 @@ Do not add a GitHub Pages `CNAME` file or add that domain back to production ori
 
 ## Legacy / secondary systems
 
-Base44, Replit, Vercel experiments, older AimCurve builds, calculators, spreadsheets, and other copies are not the canonical production app unless `PROJECT-STATUS.md` is intentionally changed.
+Firebase experiments, Glide, Base44, Replit, Vercel experiments, Bubble builds, older AimCurve builds, calculators, spreadsheets, and other copies are not the canonical production app unless `PROJECT-STATUS.md` is intentionally changed.
 
 Do not create a duplicate production app, duplicate payment path, or duplicate public calculation engine.
 
