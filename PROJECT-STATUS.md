@@ -48,6 +48,7 @@ Current production state:
 - production browser/return origins are restricted to the canonical GitHub Pages host; local development remains allowed
 - `randa-aim-sync.com` and `www.randa-aim-sync.com` have been removed from the production allowlist until DNS and ownership are verified end-to-end
 - Base44 origins are not permitted to create production checkout sessions or call the paid calculation engine
+- legacy `purchase_claims` remains empty and is locked from `anon` and `authenticated` table access; production entitlement is granted only through server-verified Stripe state
 
 ## Stripe payment path
 
@@ -117,6 +118,7 @@ Completed:
 - removed the unverified custom domain from the paid calculation origin allowlist
 - removed the unverified custom domain from the payment return allowlist
 - confirmed Supabase security advisor reports no current warnings
+- locked the unused legacy `purchase_claims` table from anonymous and authenticated client access
 - confirmed Base44 has no connected third-party connectors
 - confirmed the archive-only Replit AIM app has no active production Stripe, Supabase or OpenAI integration
 
