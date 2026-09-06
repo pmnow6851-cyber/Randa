@@ -24,16 +24,38 @@ jobs:
       - name: Check out project
         uses: actions/checkout@v4
 
-      - name: Validate required production files
+      - name: Validate canonical production state
         shell: bash
         run: |
           set -euo pipefail
-          for file in index.html manifest.webmanifest service-worker.js CNAME; do
-            test -s "$file" || { echo "Missing required file: $file"; exit 1; }
+
+          for file in index.html manifest.webmanifest service-worker.js PROJECT-STATUS.md .nojekyll; do
+            test -e "$file" || { echo "Missing required production file: $file"; exit 1; }
           done
 
-          test "$(tr -d '\r\n ' < CNAME)" = "randa-aim-sync.com" || {
-            echo "CNAME does not match the official domain";
+          # The custom domain is intentionally disabled until DNS is verified.
+          test ! -e CNAME || {
+            echo "Unexpected CNAME found. Custom domain must remain disabled until DNS is verified.";
+            exit 1;
+          }
+
+          grep -Fq 'https://pmnow6851-cyber.github.io/Randa/' PROJECT-STATUS.md || {
+            echo "PROJECT-STATUS.md does not declare the canonical GitHub Pages route";
+            exit 1;
+          }
+
+          grep -Fq 'LIVE_PAID_ONLY' PROJECT-STATUS.md || {
+            echo "PROJECT-STATUS.md is not marked LIVE_PAID_ONLY";
+            exit 1;
+          }
+
+          grep -Fq '£9.99' index.html || {
+            echo "Public app does not display the approved £9.99 one-time price";
+            exit 1;
+          }
+
+          grep -Fq 'calculate-aim-sync' index.html || {
+            echo "Paid calculation endpoint wiring not found";
             exit 1;
           }
 
@@ -45,10 +67,12 @@ jobs:
           import json
           with open('manifest.webmanifest', encoding='utf-8') as f:
               data = json.load(f)
-          required = ['name', 'short_name', 'start_url', 'display', 'icons']
+          required = ['name', 'short_name', 'start_url', 'scope', 'display', 'icons']
           missing = [k for k in required if not data.get(k)]
           if missing:
               raise SystemExit(f'Manifest missing required values: {missing}')
+          if data.get('start_url') != './' or data.get('scope') != './':
+              raise SystemExit('Manifest must remain scoped to the /Randa/ GitHub Pages path')
           print('Manifest JSON: OK')
           PY
 
@@ -58,11 +82,16 @@ jobs:
             exit 1;
           }
 
+          grep -Fq 'randa-aim-sync-v5-paid-' service-worker.js || {
+            echo "v5 paid cache namespace not found";
+            exit 1;
+          }
+
       - name: Scan tracked source for high-risk secrets
         shell: bash
         run: |
           set -euo pipefail
-          pattern='(sk_live_[A-Za-z0-9]{16,}|whsec_[A-Za-z0-9]{16,}|sb_secret_[A-Za-z0-9_-]{16,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)'
+          pattern='(sk_live_[A-Za-z0-9]{16,}|whsec_[A-Za-z0-9]{16,}|sb_secret_[A-Za-z0-9_-]{16,}|service_role["'"' ]*[:=]["'"' ]*[A-Za-z0-9._-]{16,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)'
           if grep -RInE "$pattern" . \
             --exclude-dir=.git \
             --exclude='*.png' \
@@ -74,20 +103,37 @@ jobs:
           fi
           echo "Secret pattern scan: OK"
 
-      - name: Check official production endpoint
+      - name: Check canonical production endpoint
         shell: bash
         run: |
           set -euo pipefail
+          canonical='https://pmnow6851-cyber.github.io/Randa/'
+
           curl --fail --silent --show-error --location \
             --max-time 25 \
             --retry 2 \
             --retry-delay 3 \
             --retry-all-errors \
-            https://randa-aim-sync.com/ > /tmp/randa-home.html
+            "$canonical" > /tmp/randa-home.html
 
           test -s /tmp/randa-home.html || {
-            echo "Official endpoint returned an empty response"
-            exit 1
+            echo "Canonical endpoint returned an empty response";
+            exit 1;
+          }
+
+          grep -Fq 'v5 PAID' /tmp/randa-home.html || {
+            echo "Canonical endpoint is not serving the v5 paid app";
+            exit 1;
+          }
+
+          grep -Fq '£9.99' /tmp/randa-home.html || {
+            echo "Canonical endpoint does not show the approved £9.99 price";
+            exit 1;
+          }
+
+          grep -Fq 'PAID ACCESS REQUIRED' /tmp/randa-home.html || {
+            echo "Paid-only gate marker not found on canonical endpoint";
+            exit 1;
           }
 
       - name: Open or update production incident on failure
