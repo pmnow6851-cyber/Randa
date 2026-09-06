@@ -45,7 +45,8 @@ Current production state:
 - `system-health` active
 - `stripe-webhook` retained as a secondary event handler
 - checkout and calculation functions explicitly validate the user inside the function
-- browser CORS is restricted to the canonical GitHub Pages host, the future approved custom domain, and local development
+- production browser/return origins are restricted to the canonical GitHub Pages host; local development remains allowed
+- `randa-aim-sync.com` and `www.randa-aim-sync.com` have been removed from the production allowlist until DNS and ownership are verified end-to-end
 - Base44 origins are not permitted to create production checkout sessions or call the paid calculation engine
 
 ## Stripe payment path
@@ -71,13 +72,13 @@ The existing `stripe-webhook` function remains available for future direct Strip
 
 A separate legacy **£4.99** Stripe Payment Link still exists in the Stripe account and is not part of production Aim Sync.
 
-It is not referenced by the canonical app, has no valid production entitlement metadata, and cannot unlock the paid calculator. It should be deactivated in Stripe as soon as write access is available so there is only one customer payment route.
+It is not referenced by the canonical app, has no valid production entitlement metadata, and cannot unlock the paid calculator. It must be deactivated in Stripe when Payment Link write access is available so there is only one customer payment route.
 
 ## Base44 role
 
 Base44 app ID `69b1df3fb4cc4001bac5c543` is retained only as a secondary locked builder/reference.
 
-It is not the canonical checkout or calculation engine and is not permitted as a production origin for checkout or calculation calls.
+It is not the canonical checkout or calculation engine and is not permitted as a production origin for checkout or calculation calls. Current Base44 third-party connector count is zero.
 
 ## Legacy / archive-only builds
 
@@ -88,7 +89,11 @@ Do not publish or monetise these as separate products:
 - Base44 `Randa`
 - older AimCurve copies
 
-Preserve them only as recoverable references until unique data has been verified.
+Preserve them only as recoverable references until unique data has been verified. The audited Replit AIM build does not contain active Stripe, Supabase or OpenAI integrations for the AIM app.
+
+## OpenAI API role
+
+OpenAI API is not required by the production Aim Sync architecture. Do not add API credits or expose OpenAI API keys in the app, GitHub, Base44, Replit or client-side code. Any unused OpenAI API key created during experiments should be revoked in the OpenAI Platform account.
 
 ## Production control rules
 
@@ -103,8 +108,19 @@ Preserve them only as recoverable references until unique data has been verified
 9. Full refunds revoke paid access.
 10. Base44 and legacy builds cannot create production checkout sessions or retrieve paid calculations.
 11. Automated audits may report and block unsafe releases, but must never silently alter pricing, payout destination, entitlement policy or calculation logic.
+12. Dormant or unverified domains must not be permitted as production checkout, calculation or payment-return origins.
 
-## Remaining external items
+## Revocation / hardening status — 2026-09-06
 
-- Deactivate the legacy £4.99 Stripe Payment Link.
-- Keep `randa-aim-sync.com` disabled until registrar/DNS records are fixed and verified.
+Completed:
+- removed the unverified custom domain from production checkout origin allowlist
+- removed the unverified custom domain from the paid calculation origin allowlist
+- removed the unverified custom domain from the payment return allowlist
+- confirmed Supabase security advisor reports no current warnings
+- confirmed Base44 has no connected third-party connectors
+- confirmed the archive-only Replit AIM app has no active production Stripe, Supabase or OpenAI integration
+
+Remaining external actions:
+- deactivate the legacy £4.99 Stripe Payment Link when Stripe Payment Link write access is available
+- revoke any unused experimental OpenAI API key directly in the OpenAI Platform account
+- keep `randa-aim-sync.com` disabled until registrar/DNS records are fixed and verified
