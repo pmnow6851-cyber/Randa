@@ -7,7 +7,7 @@ Canonical customer-facing Progressive Web App for RANDA.MKCOOL Aim Sync.
 - Status: **LIVE_PAID_ONLY**
 - Canonical source: `pmnow6851-cyber/Randa`
 - Canonical public route: `https://pmnow6851-cyber.github.io/Randa/`
-- Price: **£9.99 GBP one-time**
+- Approved price: **£9.99 GBP one-time**
 - Hosting: GitHub Pages from `main` / repository root
 
 The custom domain `randa-aim-sync.com` is intentionally disabled until its DNS is verified end-to-end. Do not add a `CNAME` file before that verification is complete.
@@ -16,18 +16,46 @@ The custom domain `randa-aim-sync.com` is intentionally disabled until its DNS i
 
 This public repository contains only the customer-facing PWA shell.
 
-The sensitivity calculation method and payment entitlement logic must remain server-side in the existing RANDA.MKCOOL Supabase backend. The browser calls the authenticated Edge Functions for checkout, entitlement-aware calculation, and system health.
+The sensitivity calculation method and payment entitlement logic remain server-side in the production RANDA.MKCOOL Supabase backend.
 
-Never move private calculation coefficients, Stripe secrets, Supabase service-role credentials, webhook secrets, signing keys, passwords, bank details, private addresses, or other private account information into this repository.
+Production payment/unlock path:
+
+`GitHub Pages app → Supabase create-checkout-session → Stripe Checkout (£9.99) → Supabase verify-checkout-return → paid entitlement → calculate-aim-sync`
+
+The successful Checkout Session is retrieved from Stripe server-side and checked for:
+- paid status
+- one-time payment mode
+- exact £9.99 GBP total
+- approved product metadata
+- matching signed-in user identity
+
+The paid calculation function also periodically re-verifies the Stripe payment and associated charge. A fully refunded payment causes paid access to be revoked.
+
+Never move private calculation coefficients, Stripe secrets, Supabase service-role credentials, signing keys, passwords, bank details, private addresses, or other private account information into this repository.
 
 ## Paid-access rules
 
-1. Signing up or signing in does not by itself unlock Aim Sync.
-2. Premium entitlement must come from verified server-side payment state.
+1. Signing up or signing in does not unlock Aim Sync.
+2. Premium entitlement must come from verified server-side Stripe payment state.
 3. The customer price shown by the canonical app is £9.99 GBP one-time.
-4. The calculation endpoint must reject users without active paid entitlement.
-5. Refund handling remains server-side and should revoke paid entitlement when the verified payment is fully refunded.
-6. No client-side flag, redirect parameter, localStorage value, or copied payment reference may grant premium access.
+4. The calculation endpoint rejects users without active paid entitlement.
+5. A fully refunded payment revokes paid access when Stripe state is re-verified.
+6. No client-side flag, redirect parameter, localStorage value, copied payment reference, Base44 build, or legacy payment link may grant premium access.
+
+## Supabase Edge Functions
+
+Production functions include:
+- `create-checkout-session`
+- `verify-checkout-return`
+- `calculate-aim-sync`
+- `system-health`
+- `stripe-webhook` (retained as a secondary event handler)
+
+Checkout and calculation CORS is restricted to the canonical GitHub Pages host, the future approved custom domain, and local development. Base44 origins are intentionally excluded from the production payment and calculation path.
+
+## Legacy payment link
+
+A historical £4.99 Stripe Payment Link still exists in the Stripe account but is **not** part of this production architecture. It is not referenced by the canonical app and cannot create a valid Aim Sync entitlement. Deactivate it when Stripe write access is available.
 
 ## Project structure
 
@@ -55,20 +83,9 @@ For app releases that change the public shell, update the v5 paid cache namespac
 
 ## Production audit
 
-`.github/workflows/production-audit.yml` runs on pushes to `main`, once daily, and on manual dispatch. It checks:
+`.github/workflows/production-audit.yml` runs on pushes to `main`, once daily, and on manual dispatch. It checks the canonical production files, GitHub Pages state, paid-only markers, PWA configuration and tracked-source secret patterns.
 
-- required production files
-- canonical GitHub Pages state
-- absence of an unexpected custom-domain `CNAME`
-- PWA manifest validity and GitHub Pages path scope
-- service-worker syntax and paid cache namespace
-- high-risk tracked secret patterns
-- the approved £9.99 paid-only markers
-- the canonical public endpoint
-
-On failure it opens or updates a GitHub incident issue. After recovery it closes that incident automatically.
-
-## Important monetisation note
+## Monetisation note
 
 This repository is a web/PWA application. Native Google AdMob SDK components cannot run directly inside GitHub Pages HTML. If a future native Android/Flutter edition is released, keep it as a controlled client of the same private entitlement/calculation backend rather than creating a second public calculation engine.
 
