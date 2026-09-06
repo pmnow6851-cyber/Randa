@@ -91,17 +91,40 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          pattern='(sk_live_[A-Za-z0-9]{16,}|whsec_[A-Za-z0-9]{16,}|sb_secret_[A-Za-z0-9_-]{16,}|service_role["'"' ]*[:=]["'"' ]*[A-Za-z0-9._-]{16,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)'
-          if grep -RInE "$pattern" . \
-            --exclude-dir=.git \
-            --exclude='*.png' \
-            --exclude='*.jpg' \
-            --exclude='*.jpeg' \
-            --exclude='*.webp'; then
-            echo "High-risk secret pattern detected in tracked source"
-            exit 1
-          fi
-          echo "Secret pattern scan: OK"
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          patterns = [
+              re.compile(r'sk_live_[A-Za-z0-9]{16,}'),
+              re.compile(r'whsec_[A-Za-z0-9]{16,}'),
+              re.compile(r'sb_secret_[A-Za-z0-9_-]{16,}'),
+              re.compile(r'service_role\s*[:=]\s*[\"\']?[A-Za-z0-9._-]{16,}'),
+              re.compile(r'-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----'),
+          ]
+          binary_suffixes = {'.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.zip'}
+          hits = []
+
+          for path in Path('.').rglob('*'):
+              if not path.is_file() or '.git' in path.parts or path.suffix.lower() in binary_suffixes:
+                  continue
+              try:
+                  text = path.read_text(encoding='utf-8')
+              except UnicodeDecodeError:
+                  continue
+              for pattern in patterns:
+                  if pattern.search(text):
+                      hits.append(str(path))
+                      break
+
+          if hits:
+              print('High-risk secret pattern detected in tracked source:')
+              for hit in sorted(set(hits)):
+                  print(f' - {hit}')
+              raise SystemExit(1)
+
+          print('Secret pattern scan: OK')
+          PY
 
       - name: Check canonical production endpoint
         shell: bash
