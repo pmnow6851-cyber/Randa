@@ -51,7 +51,7 @@ Production functions include:
 - `system-health`
 - `stripe-webhook` (retained as a secondary event handler)
 
-Checkout and calculation CORS is restricted to the canonical GitHub Pages host, the future approved custom domain, and local development. Base44 origins are intentionally excluded from the production payment and calculation path.
+Checkout and calculation requests are currently permitted only from the canonical GitHub Pages host and local development. `randa-aim-sync.com`, `www.randa-aim-sync.com`, Base44 origins, and other unverified origins are excluded until ownership and DNS are verified end-to-end.
 
 ## Legacy payment link
 
