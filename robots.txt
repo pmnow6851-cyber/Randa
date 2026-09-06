@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pmnow6851-cyber.github.io/Randa/sitemap.xml
