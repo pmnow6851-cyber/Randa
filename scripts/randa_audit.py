@@ -51,6 +51,7 @@ PII_SCAN_EXCLUDES = {
     "docs/SECURITY-PRIVACY.md",
     "docs/OPERATIONS.md",
 }
+TRUSTED_EMAIL_SUFFIXES = ("@example.com", "@users.noreply.github.com")
 
 
 def tracked_text_files():
@@ -99,7 +100,8 @@ def check_pii_literals(results):
         if rel in PII_SCAN_EXCLUDES or rel.startswith("DAILY_AUDIT_REPORT"):
             continue
         for email in EMAIL_RE.findall(text):
-            if email.lower().endswith("@example.com"):
+            lowered = email.lower()
+            if lowered.endswith(TRUSTED_EMAIL_SUFFIXES):
                 continue
             hits.append(f"email literal in {rel}")
             break
