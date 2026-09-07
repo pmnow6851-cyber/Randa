@@ -1,6 +1,6 @@
 # RANDA.MKCOOL AIM SYNC — CANONICAL AI HANDOFF
 
-Last reconciled: 2026-09-06
+Last reconciled: 2026-09-07
 
 This file exists to stop ChatGPT, Gemini, Grok, builders, and other assistants from drifting into different versions of the project.
 
@@ -14,6 +14,7 @@ This file exists to stop ChatGPT, Gemini, Grok, builders, and other assistants f
 - Production state: **LIVE_PAID_ONLY**
 - Approved customer price: **£9.99 GBP one-time**
 - Canonical social promotion control: **SOCIAL-MEDIA-CONTROL.md**
+- Ready social launch queue: **SOCIAL-CONTENT-QUEUE.md**
 
 If another handoff claims the primary repository is `Randa-aim-sync`, the production host is Vercel, there is no backend, or the calculator is a free client-only tool, treat that handoff as stale unless the repository's `PROJECT-STATUS.md` has been deliberately updated to say otherwise.
 
@@ -53,6 +54,17 @@ Never expose Stripe secrets, Supabase service-role credentials, bank details, pa
 
 All Aim Sync social posts, profile links, organic adverts, reels, shorts and promotional CTAs must use `SOCIAL-MEDIA-CONTROL.md` as the canonical social reference and point to the single official app URL.
 
+`SOCIAL-CONTENT-QUEUE.md` contains the current prepared launch sequence. Use it as the default source for post ideas and short-form scripts unless deliberately replaced.
+
+Because the product is **LIVE_PAID_ONLY**, do not describe the production offer as “early access”. The approved comment trigger remains **LOCK**, but the conversion should point to the live official app.
+
+Verified connected Metricool channels as of 2026-09-07:
+
+- Facebook
+- TikTok
+
+Do not treat Instagram, YouTube, Threads, X, Pinterest or other channels as connected until provider-side connection is verified.
+
 Do not promote legacy builders, test links, custom domains, old payment links or duplicate calculators. Organic promotion is the default; paid ad spend must never be created automatically.
 
 ## Domain control
@@ -78,6 +90,7 @@ Do not create a duplicate production app, duplicate payment path, or duplicate p
 7. Treat `PROJECT-STATUS.md` as the authoritative production control record when this file and an external AI handoff disagree.
 8. Use `.github/workflows/production-audit.yml` to detect unsafe production drift.
 9. Use `SOCIAL-MEDIA-CONTROL.md` for all social promotion so every channel points back to the official live app.
+10. Use `SOCIAL-CONTENT-QUEUE.md` as the prepared organic content queue and never silently convert it into paid advertising.
 
 ## Current external actions still requiring provider-side control
 
@@ -85,7 +98,8 @@ Do not create a duplicate production app, duplicate payment path, or duplicate p
 - Revoke any unused experimental OpenAI API key directly in the OpenAI Platform account.
 - Keep the custom domain disabled until registrar/DNS ownership and records are verified.
 - Connect any additional social networks in Metricool before treating them as active publishing channels.
+- Set and verify the official app URL in each social profile itself where the platform permits profile links; current Metricool publishing access does not by itself prove the profile bio/link field has been updated.
 
 ## AI continuation instruction
 
-Do not reset or rebuild the project from scratch. First read `PROJECT-STATUS.md`, `README.md`, this file, `SOCIAL-MEDIA-CONTROL.md`, and the current `main` branch before proposing or making production changes.
+Do not reset or rebuild the project from scratch. First read `PROJECT-STATUS.md`, `README.md`, this file, `SOCIAL-MEDIA-CONTROL.md`, `SOCIAL-CONTENT-QUEUE.md`, and the current `main` branch before proposing or making production changes.
