@@ -1,17 +1,37 @@
 # RANDA.MKCOOL security guardrails
-# Never commit secrets, signing keys, local credentials, or generated private files.
+# Never commit secrets, signing keys, local credentials, customer data, or generated private files.
 
 # Environment / secrets
 .env
 .env.*
 !.env.example
+.envrc
 *.pem
 *.p12
 *.pfx
 *.key
 *.secret
+*.kdbx
 secrets/
 private/
+credentials/
+credentials*.json
+client_secret*.json
+.netrc
+.pypirc
+.npmrc
+id_rsa*
+id_ed25519*
+
+# Private/customer/project data
+personal-data/
+customer-data/
+private-data/
+exports/private/
+backups/private/
+*.sqlite
+*.sqlite3
+*.db
 
 # Android signing / Firebase admin
 *.jks
@@ -36,7 +56,7 @@ build/
 .flutter-plugins
 .flutter-plugins-dependencies
 
-# Logs / exports that can contain data
+# Logs / archives that can contain data
 *.log
 *.bak
 *.backup
