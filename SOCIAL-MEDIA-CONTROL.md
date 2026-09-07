@@ -24,6 +24,54 @@ Primary CTA: **Comment “LOCK”**
 
 Conversion CTA: **Open the official Aim Sync app**
 
+## Privacy boundary — mandatory
+
+RANDA.MKCOOL must remain operationally separate from the owner's private life.
+
+Never publish, place in public source code, captions, profile bios, adverts, screenshots, support copy or public metadata any private or personal information, including:
+
+- personal home address or postcode
+- private email addresses or recovery addresses
+- private phone numbers
+- personal banking details or account identifiers
+- private account usernames used for recovery, identity or administration
+- passwords, API secrets, webhook secrets, service-role keys, tokens or other credentials
+- private family, health, benefit, personal correspondence or unrelated personal information
+
+Public-facing content must use only the RANDA.MKCOOL brand identity and approved public project links.
+
+If a screenshot or media file contains private information, redact or exclude it before publishing.
+
+Project credentials and payout accounts may be used privately by approved payment/social providers, but must never be exposed in public campaign assets or client-side code.
+
+## £0 spend rule — mandatory
+
+Campaign spend is fixed at **£0** unless the owner explicitly changes this rule.
+
+Do not create or activate:
+
+- paid ads
+- boosted posts
+- promoted posts
+- subscriptions
+- trials that can convert to paid plans
+- paid creator tools
+- paid social scheduling plans
+- paid domains or hosting for campaign purposes
+- any outbound-cost marketing action
+
+Use free organic distribution, free platform features and existing connected services only.
+
+## One-way money rule
+
+The intended commercial flow is:
+
+**Organic social traffic → official Aim Sync app → approved payment checkout → business payout account**
+
+No campaign workflow may create an automatic outbound payment path from the payout account.
+
+Refunds, chargebacks, taxes, statutory obligations and payment-processor adjustments remain governed by the relevant provider and law; the project must not falsely represent them as impossible.
+
 ## Live-launch wording
 
 Aim Sync is already live, so production social content must NOT say “early access” unless the product state is deliberately changed in `PROJECT-STATUS.md`.
@@ -62,7 +110,7 @@ Where a network supports clickable post links, use that exact URL. Do not say �
 
 ## Organic-only promotion rule
 
-Promotion uses free organic distribution by default. Do not create ad spend, boosts, paid promotion, subscriptions, trials or other outbound-cost actions unless the owner explicitly approves them.
+Promotion uses free organic distribution by default. Do not create ad spend, boosts, paid promotion, subscriptions, trials or other outbound-cost actions unless the owner explicitly changes the £0 spend rule.
 
 ## Profile bio copy
 
@@ -83,8 +131,10 @@ Your aim isn’t bad. It’s unsynced.
 ## Content rules
 
 - Never reveal the private Aim Sync calculation method, coefficients, formulas or exact sensitivity settings.
+- Never expose personal or private owner information.
 - Sell the outcome: smoother tracking, more repeatable aim and less random sensitivity changing.
-- Use genuine gameplay proof rather than unsupported performance guarantees.
+- Use genuine strong gameplay proof rather than unsupported performance guarantees.
+- Do not use poor, mediocre or misleading match results as proof.
 - Keep short-form videos under 60 seconds.
 - Structure shorts as HOOK → PROBLEM → PROOF → TEASE → CTA.
 - Keep the hook extremely fast and readable on a phone.
@@ -157,4 +207,4 @@ Copied settings can look perfect on somebody else’s phone and feel terrible on
 
 ## Publishing guardrail
 
-Content may be drafted automatically. Actual publishing or scheduling should only target currently connected accounts. TikTok, Reels, Shorts and Story formats require suitable media assets before scheduling. Do not invent a media file, fake a connection, or publish to a channel that is not connected.
+Content may be drafted automatically. Actual publishing or scheduling should only target currently connected accounts. TikTok, Reels, Shorts and Story formats require suitable media assets before scheduling. Do not invent a media file, fake a connection, publish to an unverified channel, reveal private information or incur any spend.
