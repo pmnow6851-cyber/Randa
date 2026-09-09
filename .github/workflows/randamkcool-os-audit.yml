@@ -3,15 +3,12 @@ name: RANDA.MKCOOL OS Daily Audit
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'DAILY_AUDIT_REPORT.md'
-      - 'audit-log.md'
   schedule:
     - cron: '0 2 * * *'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   issues: write
 
 concurrency:
@@ -26,28 +23,16 @@ jobs:
     steps:
       - name: Check out canonical project
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Run RANDA OS audit
+      - name: Run read-only RANDA OS audit
         id: randa_audit
         continue-on-error: true
-        run: python3 scripts/randa_audit.py --output DAILY_AUDIT_REPORT.md --log audit-log.md
-
-      - name: Commit daily report and uptime history if changed
-        if: always()
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- DAILY_AUDIT_REPORT.md audit-log.md; then
-            echo "Audit outputs unchanged."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add DAILY_AUDIT_REPORT.md audit-log.md
-          git commit -m "chore(audit): refresh daily audit outputs [skip ci]"
-          git push
+          python3 scripts/randa_audit.py \
+            --output "$RUNNER_TEMP/randa-daily-audit.md" \
+            --log "$RUNNER_TEMP/randa-audit-log.md"
 
       - name: Open or update RANDA OS incident on failure
         if: steps.randa_audit.outcome == 'failure'
@@ -57,12 +42,12 @@ jobs:
             const title = 'RANDA OS: Daily audit requires attention';
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const body = [
-              'The RANDA.MKCOOL OS daily audit detected a production, privacy, secret, financial-safety, SEO, or uptime problem.',
+              'The RANDA.MKCOOL OS read-only audit detected a production, privacy, secret, financial-safety, SEO, or uptime problem.',
               '',
               `Workflow run: ${runUrl}`,
               '',
-              'Read DAILY_AUDIT_REPORT.md and audit-log.md before making any production change.',
-              'Automation must not change price, payout destination, entitlement logic, calculation logic, authentication policy, production origins, or secrets.'
+              'Review the failed step before changing pricing, payout routing, entitlement logic, calculation logic, authentication policy, production origins, or secrets.',
+              'Detailed audit output is intentionally ephemeral and is not committed to the public repository.'
             ].join('\n');
 
             const { data: issues } = await github.rest.issues.listForRepo({
@@ -108,7 +93,7 @@ jobs:
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: issue.number,
-                  body: 'The daily RANDA OS audit is healthy again. Closing this incident.'
+                  body: 'The read-only daily RANDA OS audit is healthy again. Closing this incident.'
                 });
                 await github.rest.issues.update({
                   owner: context.repo.owner,
