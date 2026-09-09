@@ -9,7 +9,7 @@ This folder contains the Android Flutter client for the existing paid RANDA.MKCO
 - Supabase Auth is used for account sign-in and paid entitlement restoration.
 - Stripe checkout and payment verification remain server-side. The native client never contains Stripe secret keys, bank information, service-role keys, or payout details.
 - Flutter stores session tokens with `flutter_secure_storage` rather than plain shared preferences.
-- The Android wrapper is generated with minimum SDK 23 and Android backup disabled for the app.
+- The Android wrapper is generated with minimum SDK 24 and Android backup disabled for the app.
 
 ## Local Android bootstrap
 
@@ -20,7 +20,7 @@ flutter create --platforms=android --project-name randa_mkcool_aim_sync --org sy
 flutter pub get
 ```
 
-Then set Android `minSdk` to 23 and set `android:allowBackup="false"` in the main Android manifest before building.
+Then set Android `minSdk` to 24 and set `android:allowBackup="false"` in the main Android manifest before building.
 
 Run:
 
