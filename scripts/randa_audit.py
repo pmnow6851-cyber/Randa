@@ -9,13 +9,16 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
 import re
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_URL = "https://pmnow6851-cyber.github.io/Randa/"
+HEALTH_URL = "https://nnlckidhrsnodjulydpd.supabase.co/functions/v1/system-health"
 REQUIRED_FILES = [
     "index.html",
     "manifest.webmanifest",
@@ -58,6 +61,7 @@ PII_SCAN_EXCLUDES = {
     "docs/OPERATIONS.md",
 }
 TRUSTED_EMAIL_SUFFIXES = ("@example.com", "@users.noreply.github.com")
+TRUSTED_EMAILS = {"randamkcool.systems@gmail.com"}
 
 
 def tracked_text_files():
@@ -114,7 +118,7 @@ def check_pii_literals(results):
             continue
         for email in EMAIL_RE.findall(text):
             lowered = email.lower()
-            if lowered.endswith(TRUSTED_EMAIL_SUFFIXES):
+            if lowered in TRUSTED_EMAILS or lowered.endswith(TRUSTED_EMAIL_SUFFIXES):
                 continue
             hits.append(f"email literal in {rel}")
             break
@@ -149,6 +153,23 @@ def check_uptime(results):
         return ok
     except Exception as exc:
         results.append(("Canonical endpoint uptime/state", False, f"Request failed: {type(exc).__name__}"))
+        return False
+
+
+def check_backend_health(results):
+    try:
+        req = urllib.request.Request(HEALTH_URL, headers={"User-Agent": "RANDA-MKCOOL-OS-Audit/1.0"})
+        with urllib.request.urlopen(req, timeout=25) as response:
+            payload = json.loads(response.read(100000).decode("utf-8", "replace"))
+            code = response.status
+        ok = code == 200 and payload.get("ok") is True
+        results.append(("Payment/backend health", ok, f"HTTP {code}; {'ready' if ok else 'not ready'}"))
+        return ok
+    except urllib.error.HTTPError as exc:
+        results.append(("Payment/backend health", False, f"HTTP {exc.code}; not ready"))
+        return False
+    except Exception as exc:
+        results.append(("Payment/backend health", False, f"Request failed: {type(exc).__name__}"))
         return False
 
 
@@ -229,7 +250,9 @@ def main():
     check_secrets(results)
     check_pii_literals(results)
     check_outbound_money_code(results)
-    uptime_ok = check_uptime(results)
+    app_ok = check_uptime(results)
+    backend_ok = check_backend_health(results)
+    uptime_ok = app_ok and backend_ok
 
     overall_ok = all(ok for _, ok, _ in results)
     uptime_pct, uptime_samples = update_audit_log(ROOT / args.log, timestamp, overall_ok, uptime_ok)
