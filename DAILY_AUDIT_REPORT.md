@@ -1,9 +1,9 @@
 # RANDA.MKCOOL DAILY AUDIT REPORT
 
-Generated: `2026-09-09T02:05:15+00:00`
-Overall: **PASS**
-Checks: **11 passed / 0 failed**
-Recorded endpoint uptime: **100.00% across 16 audit sample(s)**
+Generated: `2026-09-09T05:27:30+00:00`
+Overall: **FAIL**
+Checks: **10 passed / 1 failed**
+Recorded endpoint uptime: **100.00% across 17 audit sample(s)**
 
 ## Results
 
@@ -17,7 +17,7 @@ Recorded endpoint uptime: **100.00% across 16 audit sample(s)**
 | Custom domain remains disabled | PASS | OK |
 | Canonical SEO files | PASS | robots/sitemap point to canonical GitHub Pages host |
 | High-risk secret scan | PASS | No high-risk secrets found |
-| Repository PII-literal scan | PASS | No unexpected PII-like literals found |
+| Repository PII-literal scan | FAIL | email literal in support.html |
 | Client outbound-money primitive scan | PASS | No refund/payout/transfer creation primitives found |
 | Canonical endpoint uptime/state | PASS | HTTP 200; paid markers present |
 
