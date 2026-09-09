@@ -56,6 +56,10 @@ build/
 .flutter-plugins
 .flutter-plugins-dependencies
 
+# Ephemeral audit outputs: never publish operational history
+DAILY_AUDIT_REPORT.md
+audit-log.md
+
 # Logs / archives that can contain data
 *.log
 *.bak
