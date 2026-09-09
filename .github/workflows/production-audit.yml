@@ -3,6 +3,8 @@ name: RANDA Production Audit
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   schedule:
     - cron: '15 6 * * *'
   workflow_dispatch:
@@ -12,7 +14,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: randa-production-audit
+  group: randa-production-audit-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -160,7 +162,7 @@ jobs:
           }
 
       - name: Open or update production incident on failure
-        if: failure()
+        if: failure() && github.event_name != 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
@@ -202,7 +204,7 @@ jobs:
             }
 
       - name: Close production incident after recovery
-        if: success()
+        if: success() && github.event_name != 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
