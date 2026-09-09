@@ -6,7 +6,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  issues: write
 
 concurrency:
   group: randa-weekly-growth
@@ -21,7 +22,7 @@ jobs:
       - name: Check out canonical project
         uses: actions/checkout@v4
 
-      - name: Generate weekly zero-cost update
+      - name: Generate weekly zero-cost update for review
         run: python3 scripts/generate_weekly_update.py
 
       - name: Verify generated page contains canonical link only
@@ -33,16 +34,50 @@ jobs:
           ! grep -Fq 'randa-aim-sync.com' updates/index.html
           ! grep -Eqi 'sk_live_|whsec_|service_role' updates/index.html
 
-      - name: Commit generated update if changed
+      - name: Detect whether review is needed
+        id: changes
         shell: bash
         run: |
-          set -euo pipefail
           if git diff --quiet -- updates/index.html; then
-            echo "Weekly update unchanged."
-            exit 0
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add updates/index.html
-          git commit -m "content: refresh weekly Aim Sync update [skip ci]"
-          git push
+
+      - name: Open or update owner-review reminder
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'Weekly growth update ready for owner review';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              'A new zero-cost RANDA.MKCOOL growth update was generated and validated.',
+              '',
+              `Workflow run: ${runUrl}`,
+              '',
+              'For security, automation no longer pushes generated content directly to the protected production path. Review before publishing.'
+            ].join('\n');
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+            const existing = issues.find(i => !i.pull_request && i.title === title);
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body
+              });
+            }
