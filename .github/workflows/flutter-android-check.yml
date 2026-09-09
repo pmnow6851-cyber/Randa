@@ -54,6 +54,7 @@ jobs:
               text = text.replace('<application', '<application\n        android:allowBackup="false"', 1)
           manifest.write_text(text)
           PY
+          rm -f test/widget_test.dart
 
       - name: Resolve dependencies
         working-directory: flutter_app
