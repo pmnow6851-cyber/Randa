@@ -64,6 +64,7 @@ class _AimSyncHomeState extends State<AimSyncHome>
   static const _supabaseKey =
       'sb_publishable_0m6qlAuHl3xa1UEhyMtr1Q_Pagypmb9';
   static const _clientHeaderValue = 'mobile';
+  static const _canonicalOrigin = 'https://pmnow6851-cyber.github.io';
 
   static const _checkoutUrl =
       '$_supabaseUrl/functions/v1/create-checkout-session';
@@ -135,6 +136,7 @@ class _AimSyncHomeState extends State<AimSyncHome>
   Map<String, String> _headers({bool authenticated = false}) => {
         'apikey': _supabaseKey,
         'content-type': 'application/json',
+        'origin': _canonicalOrigin,
         'x-randa-client': _clientHeaderValue,
         if (authenticated && _accessToken.isNotEmpty)
           'authorization': 'Bearer $_accessToken',
