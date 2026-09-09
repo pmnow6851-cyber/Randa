@@ -46,7 +46,7 @@ jobs:
 
       - name: Open or update owner-review reminder
         if: steps.changes.outputs.changed == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const title = 'Weekly growth update ready for owner review';
