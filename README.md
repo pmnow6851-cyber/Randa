@@ -8,6 +8,10 @@ RANDA.MKCOOL Aim Sync is a paid COD Mobile sensitivity optimizer for players who
 
 [Open RANDA.MKCOOL Aim Sync](https://pmnow6851-cyber.github.io/Randa/)
 
+## Master source of truth
+
+Current product, payment, growth, security and operating rules are consolidated in [`RANDA-MKCOOL-MASTER.md`](./RANDA-MKCOOL-MASTER.md). Detailed specialist documents remain available for reference.
+
 ## What customers get
 
 - A personalized CODM sensitivity profile
