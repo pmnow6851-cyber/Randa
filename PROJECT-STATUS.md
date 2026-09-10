@@ -37,7 +37,7 @@ Use the single existing project named **RANDA.MKCOOL Aim Sync** as the only prod
 
 Current production state:
 - project status: active and healthy
-- security advisor: no warnings
+- security advisor: no current warnings
 - RLS enabled on user-facing tables
 - `create-checkout-session` active
 - `verify-checkout-return` active
@@ -58,22 +58,23 @@ Approved customer price:
 - **£9.99 GBP one-time**
 
 Official production flow:
-1. Signed-in customer starts checkout from the canonical GitHub Pages app.
-2. Supabase creates the £9.99 Stripe Checkout Session server-side.
-3. Stripe returns the successful session to `verify-checkout-return`.
-4. Supabase retrieves the Checkout Session directly from Stripe and verifies paid status, mode, amount, currency, product metadata and customer user ID.
-5. Only a valid £9.99 GBP payment grants the `pro` entitlement.
+1. A signed-in customer starts checkout from the canonical GitHub Pages app.
+2. Supabase `create-checkout-session` validates the signed-in user and approved origin, then returns the canonical £9.99 Stripe Payment Link with the user ID as `client_reference_id` and the signed-in email prefilled.
+3. Stripe creates the Checkout Session when the customer completes checkout and redirects to the canonical app with the Stripe Checkout Session ID.
+4. Supabase `verify-checkout-return` retrieves that Checkout Session directly from Stripe and verifies paid status, mode, amount, currency, product metadata and customer user ID.
+5. Only a valid £9.99 GBP payment for `randa_mkcool_aim_sync_pro` grants the `pro` entitlement.
 6. The paid calculation function periodically re-verifies the Stripe Checkout Session and associated charge. A fully refunded payment is rejected and paid access is revoked.
 
 This server-verified return path is the primary unlock mechanism and does not rely on a client-side success flag.
 
 The existing `stripe-webhook` function remains available for future direct Stripe webhook delivery, but a live Stripe webhook endpoint is not currently required for the primary unlock path.
 
-## Legacy Stripe Payment Link
+### Canonical Payment Link status — 10 September 2026
 
-A separate legacy **£4.99** Stripe Payment Link still exists in the Stripe account and is not part of production Aim Sync.
-
-It is not referenced by the canonical app, has no valid production entitlement metadata, and cannot unlock the paid calculator. It must be deactivated in Stripe when Payment Link write access is available so there is only one customer payment route.
+- The active production Payment Link is the £9.99 GBP one-time offer.
+- Its metadata includes `product=randa_mkcool_aim_sync_pro`, aligned with `verify-checkout-return` validation.
+- The old £4.99 Payment Link is inactive and its old price is inactive.
+- Do not reactivate legacy payment links or introduce a second customer payment route.
 
 ## Base44 role
 
@@ -110,8 +111,10 @@ OpenAI API is not required by the production Aim Sync architecture. Do not add A
 10. Base44 and legacy builds cannot create production checkout sessions or retrieve paid calculations.
 11. Automated audits may report and block unsafe releases, but must never silently alter pricing, payout destination, entitlement policy or calculation logic.
 12. Dormant or unverified domains must not be permitted as production checkout, calculation or payment-return origins.
+13. Genuine gameplay proof and public promotional assets must be separated from raw screenshots that contain personal profile information.
+14. Generated promotional artwork must never be presented as genuine gameplay proof.
 
-## Revocation / hardening status — 2026-09-06
+## Revocation / hardening status — 10 September 2026
 
 Completed:
 - removed the unverified custom domain from production checkout origin allowlist
@@ -121,8 +124,22 @@ Completed:
 - locked the unused legacy `purchase_claims` table from anonymous and authenticated client access
 - confirmed Base44 has no connected third-party connectors
 - confirmed the archive-only Replit AIM app has no active production Stripe, Supabase or OpenAI integration
+- activated a repository ruleset on the default branch that blocks deletion and force-pushes, requires pull requests, and requires linear history
+- deactivated the old £4.99 Stripe Payment Link
+- aligned the active £9.99 Payment Link product metadata with server-side checkout-return verification
+- separated raw private social screenshots, genuine winning proof, social-ready material, generated reference artwork, research and legacy material into distinct protected folders
 
-Remaining external actions:
-- deactivate the legacy £4.99 Stripe Payment Link when Stripe Payment Link write access is available
+Remaining owner-side actions:
+- review Google third-party access and remove any no-longer-needed experimental services
 - revoke any unused experimental OpenAI API key directly in the OpenAI Platform account
 - keep `randa-aim-sync.com` disabled until registrar/DNS records are fixed and verified
+
+## Growth controls
+
+- Use genuine winning gameplay and victory screens as proof.
+- Keep the calculation engine private and sell the outcome rather than the method.
+- Use one official app URL and the one active £9.99 checkout route.
+- Keep promotion organic unless the owner explicitly changes the no-spend rule.
+- Do not claim guaranteed wins, kills or performance.
+- Do not say “early access” while the product is live.
+- Keep generated art as promotional/reference material only, never as gameplay evidence.
