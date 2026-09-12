@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Check out canonical project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Run read-only RANDA OS audit
         id: randa_audit
