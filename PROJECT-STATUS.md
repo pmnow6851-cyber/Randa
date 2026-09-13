@@ -1,5 +1,7 @@
 # RANDA.MKCOOL AIM SYNC SYSTEM — PROJECT STATUS
 
+Last reconciled: **13 September 2026**
+
 ## Canonical production app
 
 **RANDA.MKCOOL Aim Sync v5 Paid** is the single canonical customer-facing application.
@@ -16,39 +18,40 @@ The calculator, engine and generated sensitivity values are not available to unp
 
 ## Front-end role
 
-GitHub Pages is the canonical public front end and source-of-truth for the customer-facing PWA.
+GitHub Pages is the canonical public front end and source of truth for the customer-facing PWA.
 
-The previous custom-domain binding was removed because `randa-aim-sync.com` was not resolving. The custom domain must not be re-enabled until DNS is verified working end-to-end.
+The previous custom-domain binding remains disabled because `randa-aim-sync.com` was not verified working end-to-end. Do not re-enable that domain until DNS and ownership are deliberately verified.
 
-The v5 service worker purges old caches so the previous release-candidate/free calculator cannot remain available from stale local cache.
+The v5 service worker purges old caches so an older free/release-candidate calculator cannot remain available from stale local cache.
 
 ## Private calculation engine
 
 Sensitivity calculation logic runs in the Supabase Edge Function:
 `calculate-aim-sync`
 
-The calculation method is intentionally absent from the public GitHub front-end source. The Edge Function validates the signed-in user and requires an active paid `pro` entitlement before returning any generated sensitivity matrix.
+The calculation method is intentionally absent from the public GitHub front-end source. The Edge Function validates the signed-in user and requires an active Stripe-backed `pro` entitlement before returning a generated sensitivity matrix.
 
-Do not move the calculation coefficients or method back into public browser JavaScript.
+The calculation endpoint also enforces bounded request size and per-user abuse throttling. These protections must not be used to move the calculation method back into public browser or Android code.
 
 ## Supabase production role
 
 Use the single existing project named **RANDA.MKCOOL Aim Sync** as the only production backend.
 
-Current production state:
+Current production controls:
 - project status: active and healthy
-- security advisor: no current warnings
-- RLS enabled on user-facing tables
-- `create-checkout-session` active
-- `verify-checkout-return` active and hardened against wrong payment-link, account-email, refund and payment-reference states
-- `calculate-aim-sync` active
-- `system-health` active and checking database, Stripe secret readiness and webhook signing-secret readiness
-- `stripe-webhook` active as a complementary signed event handler for successful payments, full refunds and disputes
-- checkout and calculation functions explicitly validate the user inside the function
-- production browser/return origins are restricted to the canonical GitHub Pages host; local development remains allowed
-- `randa-aim-sync.com` and `www.randa-aim-sync.com` have been removed from the production allowlist until DNS and ownership are verified end-to-end
-- Base44 origins are not permitted to create production checkout sessions or call the paid calculation engine
-- legacy `purchase_claims` is locked from `anon` and `authenticated` table access; production entitlement is granted only through server-verified Stripe state
+- Supabase security advisor: no current findings after the 13 September 2026 review
+- RLS enabled on all public application tables
+- user-owned profile/config rows are scoped to the authenticated user
+- `purchase_claims` remains service-side only; anonymous/authenticated roles are explicitly denied by policy and do not have table privileges
+- privileged payment helper functions are executable only by trusted server roles
+- `create-checkout-session` is active and validates the signed-in user before returning the canonical payment route
+- `verify-checkout-return` is active as a safe **UX redirect only** and cannot grant entitlement
+- `calculate-aim-sync` is active, paid/pro-gated and private
+- `generate-gunsmith` is active and paid/pro-gated; customer-facing integration is a separate controlled feature task
+- `system-health` is active and checks database plus live webhook-signing readiness without exposing secrets
+- `stripe-webhook` is active and is the **single entitlement authority** for successful payments, full refunds and disputes
+- production browser origins are restricted to the canonical GitHub Pages host; local development remains allowed
+- Base44 and legacy origins are not permitted to retrieve paid calculations or become a second production checkout path
 
 ## Stripe payment path
 
@@ -59,92 +62,124 @@ Approved customer price:
 
 Official production flow:
 1. A signed-in customer starts checkout from the canonical GitHub Pages app.
-2. Supabase `create-checkout-session` validates the signed-in user and approved origin, then returns the canonical £9.99 Stripe Payment Link with the user ID as `client_reference_id` and the signed-in email prefilled.
-3. Stripe creates the Checkout Session when the customer completes checkout and redirects first to Supabase `verify-checkout-return`, embedding the Stripe Checkout Session ID.
-4. `verify-checkout-return` retrieves that Checkout Session directly from Stripe and requires the canonical active Payment Link, paid status, one-time payment mode, £9.99 GBP amount, approved product metadata, valid user reference, matching account/payment email, a valid PaymentIntent and no full refund.
-5. Only a verified payment for `randa_mkcool_aim_sync_pro` grants the `pro` entitlement, stored against the verified Stripe PaymentIntent reference.
-6. After entitlement is written, the verifier redirects the customer to the canonical app with a success return. The signed `stripe-webhook` remains an independent event path and revokes paid access on a full refund or dispute.
-7. `calculate-aim-sync` requires an active Stripe-backed `pro` entitlement before returning any paid output. It does not expose or duplicate Stripe secrets in the browser.
+2. Supabase `create-checkout-session` validates the user and approved client/origin, then returns the canonical £9.99 Stripe Payment Link with the signed-in account reference attached.
+3. Stripe creates the Checkout Session and processes the payment.
+4. The signed `stripe-webhook` independently receives the live Stripe event and validates the canonical Payment Link, paid one-time state, £9.99 GBP amount/currency, valid user reference, PaymentIntent and matching account/payment identity before calling the service-only entitlement function.
+5. Only that signed webhook path may grant the `pro` entitlement. Entitlement is stored against the verified Stripe PaymentIntent reference.
+6. The Payment Link completion redirect may pass through `verify-checkout-return`, but that endpoint is deliberately non-authoritative: it validates only a safe return destination/session-id shape and redirects the browser back to the canonical app. It does **not** create or change paid access.
+7. On return, the app re-checks the server-side entitlement. Access appears only after the signed webhook has verified the payment.
+8. A full refund or Stripe dispute is handled by the same signed webhook and revokes paid access.
+9. `calculate-aim-sync` and `generate-gunsmith` require an active Stripe-backed `pro` entitlement before returning protected outputs.
 
-This server-verified return path is the primary unlock mechanism and does not rely on a client-side success flag.
+The signed Stripe webhook is the single source of truth for payment-to-entitlement state. Never restore client-side success flags or browser-return logic as an entitlement authority.
 
-The signed `stripe-webhook` complements the return verifier. It independently validates live Stripe events and protects entitlement state when later refund or dispute events occur.
+### Canonical Payment Link status
 
-### Canonical Payment Link status — 10 September 2026
+- The production Aim Sync Payment Link is the **£9.99 GBP one-time** offer.
+- Its metadata identifies the canonical Aim Sync product.
+- Its completion route returns through the safe UX redirect before the customer returns to the canonical app.
+- The obsolete £4.99 Payment Link and old price are inactive.
+- Do not reactivate legacy Aim Sync payment links or introduce a second Aim Sync customer payment route.
 
-- The active production Payment Link is the £9.99 GBP one-time offer.
-- Its metadata includes `product=randa_mkcool_aim_sync_pro`, aligned with `verify-checkout-return` validation.
-- Its after-payment redirect routes through `verify-checkout-return` before the customer returns to the canonical app.
-- The old £4.99 Payment Link is inactive and its old price is inactive.
-- Do not reactivate legacy payment links or introduce a second customer payment route.
+## Gunsmith expansion
+
+The backend `generate-gunsmith` Edge Function is active and protected by the same authenticated, Stripe-backed `pro` entitlement boundary used by Aim Sync.
+
+Current boundary:
+- backend generation is available only to paid/pro users
+- generated build codes are RANDA.MKCOOL references, not native CODM import codes
+- the function has per-user throttling and bounded request size
+- customer-facing web/Android Gunsmith UI is **not yet part of the canonical production front end**
+
+Integrate the UI only through a reviewed production change. Do not weaken the Aim Sync paid gate or expose protected calculation logic while doing so.
+
+## Android / Google Play role
+
+The Flutter Android client is in the canonical repository and passes the current source/build gates, but it is **not yet approved for public Google Play release**.
+
+Keep the GitHub Pages paid PWA canonical until the Android release checklist is complete. Owner-gated release items include:
+- owner-controlled release/upload signing kept outside public GitHub
+- physical-device account, entitlement-restoration, calculator, copy and recovery testing
+- a Google Play-compliant billing/distribution decision
+- AdMob production configuration only after consent/privacy setup is ready
+- privacy policy, account-deletion path and Play disclosures
+- final signed API-36+ Android App Bundle and deliberate owner approval
 
 ## Base44 role
 
-Base44 app ID `69b1df3fb4cc4001bac5c543` is retained only as a secondary locked builder/reference.
+Base44 is retained only as a secondary locked builder/reference.
 
-It is not the canonical checkout or calculation engine and is not permitted as a production origin for checkout or calculation calls. Current Base44 third-party connector count is zero.
+It is not the canonical checkout or calculation engine and must not be permitted as a production origin for checkout or protected calculations.
 
 ## Legacy / archive-only builds
 
-Do not publish or monetise these as separate products:
+Do not publish or monetise these as separate Aim Sync products:
 - Replit RANDA.MKCOOL AIM SYNC SYSTEM build
 - Replit Aim Sync Lab
 - Replit Aim Recalibrator
 - Base44 `Randa`
 - older AimCurve copies
+- other abandoned/test deployments that are not the canonical GitHub Pages app
 
-Preserve them only as recoverable references until unique data has been verified. The audited Replit AIM build does not contain active Stripe, Supabase or OpenAI integrations for the AIM app.
+Preserve legacy material only as recoverable reference until unique data has been checked. Do not reconnect archived systems to production payment or protected calculation state.
 
 ## OpenAI API role
 
-OpenAI API is not required by the production Aim Sync architecture. Do not add API credits or expose OpenAI API keys in the app, GitHub, Base44, Replit or client-side code. Any unused OpenAI API key created during experiments should be revoked in the OpenAI Platform account.
+OpenAI API is not required by the production Aim Sync architecture. Do not add paid API credits or expose OpenAI API keys in the app, GitHub, Base44, Replit or client-side code. Any unused experimental API credential should be revoked directly in its provider account.
 
 ## Production control rules
 
-1. One canonical public app.
+1. One canonical public Aim Sync app.
 2. No free calculator access or free sensitivity outputs.
-3. One GitHub repository as front-end source-of-truth and backup vault.
+3. One GitHub repository as front-end source of truth and backup vault.
 4. One private Supabase calculation/payment backend.
-5. One approved customer price: £9.99 GBP one-time.
-6. No calculation method in public front-end code.
-7. No private addresses, bank details, private API keys, service-role keys, passwords, signing keys or account identity records in public/client configuration.
-8. Entitlements come only from server-verified Stripe payment state.
-9. Full refunds and disputes revoke paid access.
-10. Base44 and legacy builds cannot create production checkout sessions or retrieve paid calculations.
-11. Automated audits may report and block unsafe releases, but must never silently alter pricing, payout destination, entitlement policy or calculation logic.
-12. Dormant or unverified domains must not be permitted as production checkout, calculation or payment-return origins.
-13. Genuine gameplay proof and public promotional assets must be separated from raw screenshots that contain personal profile information.
-14. Generated promotional artwork must never be presented as genuine gameplay proof.
+5. One approved Aim Sync customer price: £9.99 GBP one-time.
+6. No calculation method in public front-end or Android client code.
+7. No private addresses, bank details, API secrets, service-role keys, passwords, signing keys or recovery material in public/client configuration.
+8. Entitlements come only from the signed server-side Stripe webhook.
+9. Browser checkout-return state never grants access.
+10. Full refunds and disputes revoke paid access through the signed webhook.
+11. Base44 and legacy builds cannot create a second production path or retrieve protected calculations.
+12. Automated audits may report and block unsafe releases, but must never silently alter pricing, payout destination, entitlement policy or calculation logic.
+13. Dormant or unverified domains must not be permitted as production checkout, calculation or return origins.
+14. Genuine gameplay proof and public promotional assets must stay separate from private/raw screenshots.
+15. Generated promotional artwork must never be represented as genuine gameplay proof.
+16. New protected features such as Gunsmith must inherit authentication, paid-entitlement and privacy controls rather than creating bypasses.
 
-## Revocation / hardening status — 10 September 2026
+## Hardening status — 13 September 2026
 
 Completed:
-- removed the unverified custom domain from production checkout origin allowlist
-- removed the unverified custom domain from the paid calculation origin allowlist
-- removed the unverified custom domain from the payment return allowlist
-- confirmed Supabase security advisor reports no current warnings
-- locked the unused legacy `purchase_claims` table from anonymous and authenticated client access
-- confirmed Base44 has no connected third-party connectors
-- confirmed the archive-only Replit AIM app has no active production Stripe, Supabase or OpenAI integration
-- activated a repository ruleset on the default branch that blocks deletion and force-pushes, requires pull requests, and requires linear history
-- deactivated the old £4.99 Stripe Payment Link
-- aligned the active £9.99 Payment Link product metadata with server-side checkout-return verification
-- routed the live £9.99 Stripe completion redirect through the server-side payment verifier before returning customers to the app
-- fixed payment-return entitlement writes to use the validated Stripe PaymentIntent reference rather than the Checkout Session reference
-- added canonical Payment Link, account-email and full-refund validation to the return verifier
-- expanded the public health signal to require database, Stripe secret and webhook signing-secret readiness without exposing those secrets
-- separated raw private social screenshots, genuine winning proof, social-ready material, generated reference artwork, research and legacy material into distinct protected folders
+- canonical GitHub Pages app retained as the single production front end
+- unverified custom domain kept out of checkout, calculation and return allowlists
+- Supabase security advisor reviewed with no current findings
+- all public application tables confirmed with RLS enabled
+- legacy `purchase_claims` client policies replaced with explicit deny-all anonymous/authenticated policy while retaining service-side payment processing
+- service-only payment helper permissions verified
+- active £9.99 Aim Sync Payment Link aligned with the signed webhook path
+- obsolete £4.99 Payment Link kept inactive
+- signed live Stripe webhook confirmed enabled for successful checkout, asynchronous success, full refund and dispute events
+- payment entitlement authority consolidated in the signed webhook
+- checkout-return endpoint confirmed UX-only and unable to grant access
+- private calculation endpoint hardened with bounded requests and per-user abuse throttling
+- protected Gunsmith backend confirmed authenticated and pro-gated
+- repository ruleset remains active on `main`: pull requests required, deletion and force-push blocked, linear history required
+- scheduled production and OS audits continue to guard canonical source/deployment drift
 
-Remaining owner-side actions:
-- review Google third-party access and remove any no-longer-needed experimental services
-- revoke any unused experimental OpenAI API key directly in the OpenAI Platform account
+Remaining owner-side/provider actions:
+- verify the official app on a physical Samsung Galaxy A56, including sign-in, paid-access restoration, calculation and One-Tap Copy
+- create/protect Android signing material outside GitHub before any Play production build
+- complete Google Play billing/distribution, privacy, deletion, consent and listing gates
+- finish AdMob production app/ad-unit setup only with the required consent/privacy controls
+- review the recently authorised Supabase GitHub OAuth connection and remove it only if it is not intentionally used for developer tooling
+- verify the RANDA business email directly in GitHub account settings if still pending
+- review Google third-party access and revoke no-longer-needed experimental services
 - keep `randa-aim-sync.com` disabled until registrar/DNS records are fixed and verified
 
 ## Growth controls
 
 - Use genuine winning gameplay and victory screens as proof.
 - Keep the calculation engine private and sell the outcome rather than the method.
-- Use one official app URL and the one active £9.99 checkout route.
+- Use the official app URL and one active £9.99 Aim Sync checkout route.
 - Keep promotion organic unless the owner explicitly changes the no-spend rule.
 - Do not claim guaranteed wins, kills or performance.
 - Do not say “early access” while the product is live.
