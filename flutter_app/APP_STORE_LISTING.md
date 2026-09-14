@@ -1,6 +1,6 @@
 # Apple App Store Listing — Store-Ready Draft
 
-> Use only with an iOS build that uses Apple In-App Purchase for the digital unlock (unless a deliberately configured Apple entitlement/exception applies), includes in-app account deletion, and has complete privacy disclosures.
+> Use only with an iOS build that uses Apple In-App Purchase for the digital unlock, includes Restore Purchases and in-app account deletion, and has complete privacy disclosures.
 
 ## Name
 
@@ -46,9 +46,9 @@ sensitivity,aim,CODM,Call of Duty Mobile,FOV,gyro,multiplayer,battle royale,cont
 
 RANDA.MKCOOL Aim Sync is an unofficial sensitivity utility. The app uses one non-consumable In-App Purchase product: `randa_mkcool_aim_sync_pro`.
 
-For App Review, provide a working review account and any required sandbox purchase instructions. The full calculator must be reviewable after the test purchase/restore flow. The app includes an in-app Delete Account action and links to the public Privacy Policy and Support pages.
+For App Review, provide a working review account and any required sandbox purchase instructions. The full calculator must be reviewable after the test purchase/restore flow. The app must include an in-app Delete Account action and links to the public Privacy Policy and Support pages.
 
-No external Stripe purchase button or off-App-Store purchase call-to-action should appear in the iOS store build.
+The production backend accepts only active entitlements produced by verified Stripe, Google Play or Apple App Store purchase verification. The App Store binary must not show an external Stripe purchase button or off-App-Store purchase call-to-action.
 
 ## URLs
 
