@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,10 +66,13 @@ class _AimSyncHomeState extends State<AimSyncHome>
   static const _clientHeaderValue = 'mobile';
   static const _canonicalOrigin = 'https://pmnow6851-cyber.github.io';
 
-  static const _checkoutUrl =
-      '$_supabaseUrl/functions/v1/create-checkout-session';
   static const _calcUrl = '$_supabaseUrl/functions/v1/calculate-aim-sync';
   static const _healthUrl = '$_supabaseUrl/functions/v1/system-health';
+  static const _verifyStoreUrl =
+      '$_supabaseUrl/functions/v1/verify-store-purchase';
+  static const _deleteAccountUrl =
+      '$_supabaseUrl/functions/v1/delete-my-account';
+  static const _storeProductId = 'randa_mkcool_aim_sync_pro';
 
   static const _storage = FlutterSecureStorage();
   static const _accessKey = 'randa_access_token_v1';
@@ -99,11 +102,24 @@ class _AimSyncHomeState extends State<AimSyncHome>
 
   Map<String, dynamic>? _result;
   Timer? _calcDebounce;
+  StreamSubscription<List<PurchaseDetails>>? _purchaseSubscription;
+  ProductDetails? _storeProduct;
+  bool _storeAvailable = false;
+  bool _storeLoading = true;
+  String _storeMessage = 'Checking secure store…';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _purchaseSubscription = InAppPurchase.instance.purchaseStream.listen(
+      _handlePurchaseUpdates,
+      onError: (_) {
+        if (mounted) {
+          setState(() => _storeMessage = 'Store connection interrupted.');
+        }
+      },
+    );
     unawaited(_bootstrap());
   }
 
@@ -111,6 +127,7 @@ class _AimSyncHomeState extends State<AimSyncHome>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _calcDebounce?.cancel();
+    _purchaseSubscription?.cancel();
     _email.dispose();
     _password.dispose();
     super.dispose();
@@ -124,13 +141,194 @@ class _AimSyncHomeState extends State<AimSyncHome>
   }
 
   Future<void> _bootstrap() async {
-    await _checkHealth();
+    await Future.wait([_checkHealth(), _loadStoreProduct()]);
     _accessToken = await _storage.read(key: _accessKey) ?? '';
     _refreshToken = await _storage.read(key: _refreshKey) ?? '';
     if (_accessToken.isNotEmpty) {
       await _restoreSession();
     }
     if (mounted) setState(() => _checkingAccess = false);
+  }
+
+  Future<void> _loadStoreProduct() async {
+    try {
+      final available = await InAppPurchase.instance.isAvailable();
+      if (!available) {
+        if (mounted) {
+          setState(() {
+            _storeAvailable = false;
+            _storeLoading = false;
+            _storeMessage = 'Google Play or App Store is unavailable.';
+          });
+        }
+        return;
+      }
+      final response = await InAppPurchase.instance
+          .queryProductDetails(const {_storeProductId});
+      final product = response.productDetails.isEmpty
+          ? null
+          : response.productDetails.first;
+      if (mounted) {
+        setState(() {
+          _storeAvailable = product != null;
+          _storeProduct = product;
+          _storeLoading = false;
+          _storeMessage = product == null
+              ? 'Aim Sync Pro is not configured in this store yet.'
+              : 'Secure one-time purchase through your device store.';
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _storeAvailable = false;
+          _storeLoading = false;
+          _storeMessage = 'Could not connect to the device store.';
+        });
+      }
+    }
+  }
+
+  Future<void> _buyStoreProduct() async {
+    if (!_signedIn) {
+      _snack('Create an account or sign in first.');
+      return;
+    }
+    final product = _storeProduct;
+    if (!_storeAvailable || product == null) {
+      _snack(_storeMessage);
+      return;
+    }
+    final started = await InAppPurchase.instance.buyNonConsumable(
+      purchaseParam: PurchaseParam(productDetails: product),
+    );
+    if (!started) _snack('The store did not start the purchase.');
+  }
+
+  Future<void> _restoreStorePurchases() async {
+    if (!_signedIn) {
+      _snack('Sign in before restoring purchases.');
+      return;
+    }
+    await _withBusy(() async {
+      await InAppPurchase.instance.restorePurchases();
+      _snack('Restore requested. Verified purchases will unlock automatically.');
+    });
+  }
+
+  Future<void> _handlePurchaseUpdates(
+    List<PurchaseDetails> purchases,
+  ) async {
+    for (final purchase in purchases) {
+      if (purchase.productID != _storeProductId) continue;
+      if (purchase.status == PurchaseStatus.error) {
+        _snack(purchase.error?.message ?? 'Store purchase failed.');
+        continue;
+      }
+      if (purchase.status == PurchaseStatus.canceled) {
+        _snack('Purchase cancelled. No access change was made.');
+        continue;
+      }
+      if (purchase.status == PurchaseStatus.pending) {
+        _snack('Purchase pending store confirmation.');
+        continue;
+      }
+      if (purchase.status == PurchaseStatus.purchased ||
+          purchase.status == PurchaseStatus.restored) {
+        final verified = await _verifyStorePurchase(purchase);
+        if (verified && purchase.pendingCompletePurchase) {
+          await InAppPurchase.instance.completePurchase(purchase);
+        }
+      }
+    }
+  }
+
+  Future<bool> _verifyStorePurchase(PurchaseDetails purchase) async {
+    if (!_signedIn || _accessToken.isEmpty) {
+      _snack('Sign in to verify this purchase.');
+      return false;
+    }
+    try {
+      Future<http.Response> call() => http.post(
+            Uri.parse(_verifyStoreUrl),
+            headers: _headers(authenticated: true),
+            body: jsonEncode({
+              'source': purchase.verificationData.source,
+              'product_id': purchase.productID,
+              'purchase_id': purchase.purchaseID,
+              'verification_data':
+                  purchase.verificationData.serverVerificationData,
+            }),
+          );
+      var response = await call();
+      if (response.statusCode == 401 && await _refreshSession()) {
+        response = await call();
+      }
+      final data = await _decode(response);
+      if (response.statusCode != 200 || data['ok'] != true) {
+        throw Exception(_errorText(data, 'Store verification failed'));
+      }
+      await _refreshAccessAndMaybeCalculate();
+      if (!_isPro) throw Exception('Verified entitlement is not active');
+      _snack('Purchase verified. Aim Sync Pro is active.');
+      return true;
+    } catch (e) {
+      _snack(_cleanException(e));
+      return false;
+    }
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Delete account permanently?'),
+            content: const Text(
+              'This deletes your RANDA.MKCOOL account and eligible associated data. Purchases are not refunded by deleting the account.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('CANCEL'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('DELETE ACCOUNT'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+    await _deleteAccount();
+  }
+
+  Future<void> _deleteAccount() async {
+    await _withBusy(() async {
+      Future<http.Response> call() => http.delete(
+            Uri.parse(_deleteAccountUrl),
+            headers: _headers(authenticated: true),
+          );
+      var response = await call();
+      if (response.statusCode == 401 && await _refreshSession()) {
+        response = await call();
+      }
+      final data = await _decode(response);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw Exception(_errorText(data, 'Account deletion failed'));
+      }
+      await _saveTokens(null);
+      if (!mounted) return;
+      setState(() {
+        _signedIn = false;
+        _isPro = false;
+        _userId = '';
+        _userEmail = '';
+        _result = null;
+      });
+      _snack('Your account deletion request was completed.');
+    });
   }
 
   Map<String, String> _headers({bool authenticated = false}) => {
@@ -355,50 +553,6 @@ class _AimSyncHomeState extends State<AimSyncHome>
     }
   }
 
-  Future<void> _startCheckout() async {
-    if (!_systemOnline) {
-      _snack('System check failed. No payment has been taken.');
-      return;
-    }
-    if (!_signedIn) {
-      _snack('Create an account or sign in first.');
-      return;
-    }
-    if (_isPro) {
-      _snack('Paid access is already active.');
-      return;
-    }
-
-    await _withBusy(() async {
-      Future<http.Response> call() => http.post(
-            Uri.parse(_checkoutUrl),
-            headers: _headers(authenticated: true),
-            body: jsonEncode({'client': 'mobile'}),
-          );
-      var response = await call();
-      if (response.statusCode == 401 && await _refreshSession()) {
-        response = await call();
-      }
-      final data = await _decode(response);
-      if (response.statusCode != 200) {
-        throw Exception(_errorText(data, 'Checkout unavailable'));
-      }
-      if (data['alreadyPro'] == true) {
-        if (mounted) setState(() => _isPro = true);
-        await _calculate();
-        return;
-      }
-      final checkout = data['url']?.toString() ?? '';
-      final uri = Uri.tryParse(checkout);
-      if (uri == null || uri.scheme != 'https') {
-        throw Exception('Checkout link missing');
-      }
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched) throw Exception('Could not open secure checkout');
-      _snack('Complete payment in your browser, then return here.');
-    });
-  }
-
   Map<String, dynamic> _payload() => {
         'base': _base.round(),
         'fov': _fov.round(),
@@ -613,6 +767,15 @@ class _AimSyncHomeState extends State<AimSyncHome>
                   subtitle: Text(_userEmail.isEmpty ? 'Account active' : _userEmail),
                   trailing: TextButton(onPressed: _busy ? null : _signOut, child: const Text('SIGN OUT')),
                 ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: _busy ? null : _confirmDeleteAccount,
+                    icon: const Icon(Icons.delete_forever_outlined),
+                    label: const Text('DELETE ACCOUNT'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                  ),
+                ),
               ] else ...[
                 TextField(
                   controller: _email,
@@ -658,11 +821,11 @@ class _AimSyncHomeState extends State<AimSyncHome>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const _SectionTitle('ONE-TIME UNLOCK'),
-              const Text(
-                '£9.99',
+              Text(
+                _storeProduct?.price ?? 'STORE PRICE',
                 style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: Color(0xFF1AFFC6)),
               ),
-              const Text('ONE-TIME PAYMENT', style: TextStyle(color: Color(0xFF8AA3B0))),
+              const Text('ONE-TIME STORE PURCHASE', style: TextStyle(color: Color(0xFF8AA3B0))),
               const SizedBox(height: 12),
               const _Feature('Full MP + BR sensitivity matrix'),
               const _Feature('Camera, firing and gyroscope values'),
@@ -672,14 +835,27 @@ class _AimSyncHomeState extends State<AimSyncHome>
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _busy || !_systemOnline ? null : _startCheckout,
-                  child: Text(_busy ? 'WORKING…' : 'UNLOCK AIM SYNC • £9.99'),
+                  onPressed: _busy || _storeLoading || !_storeAvailable
+                      ? null
+                      : _buyStoreProduct,
+                  child: Text(_busy || _storeLoading
+                      ? 'CHECKING STORE…'
+                      : 'UNLOCK AIM SYNC • ${_storeProduct?.price ?? ''}'),
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Secure checkout opens in your browser. After payment, return to this app and access is rechecked automatically.',
+              Text(
+                _storeMessage,
                 style: TextStyle(color: Color(0xFF8AA3B0), fontSize: 12),
+              ),
+              const SizedBox(height: 6),
+              Center(
+                child: TextButton(
+                  onPressed: _busy || !_storeAvailable
+                      ? null
+                      : _restoreStorePurchases,
+                  child: const Text('RESTORE PURCHASES'),
+                ),
               ),
             ],
           ),
@@ -696,12 +872,21 @@ class _AimSyncHomeState extends State<AimSyncHome>
               const Text('PAID ACCESS REQUIRED', style: TextStyle(fontWeight: FontWeight.w900)),
               const SizedBox(height: 8),
               const Text(
-                'The sensitivity engine, controls, and generated values stay locked until the £9.99 payment is verified.',
+                'The sensitivity engine, controls, and generated values stay locked until a supported purchase is verified.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Color(0xFF8AA3B0)),
               ),
               const SizedBox(height: 14),
-              FilledButton(onPressed: _busy ? null : _startCheckout, child: const Text('UNLOCK • £9.99')),
+              FilledButton(
+                onPressed: _busy || !_storeAvailable ? null : _buyStoreProduct,
+                child: Text('UNLOCK • ${_storeProduct?.price ?? 'STORE'}'),
+              ),
+              TextButton(
+                onPressed: _busy || !_storeAvailable
+                    ? null
+                    : _restoreStorePurchases,
+                child: const Text('RESTORE PURCHASES'),
+              ),
             ],
           ),
         ),
