@@ -1,52 +1,41 @@
-# Google Play Store Listing — Store-Ready Draft
+# Google Play Store Listing Draft
 
-> Use only with a native Android build that uses Google Play Billing (or a deliberately configured eligible Google payments programme), has working account deletion, privacy disclosures, release signing, and completed device testing.
+> Store-ready metadata draft. Do not publish until native Play Billing purchase/restore, account deletion, signing, privacy declarations, and device testing pass the release gate.
 
 ## Title
 
-RANDA.MKCOOL Aim Sync
+CODM Aim Sync Optimizer
 
 ## Short description
 
-Sensitivity and aim setup companion for Call of Duty: Mobile players.
+CODM Sensitivity and Aim Optimizer for smoother, repeatable aim control.
 
 ## Long description
 
-RANDA.MKCOOL Aim Sync is an unofficial Call of Duty: Mobile sensitivity and aim-setup utility for players who want a repeatable way to organise and test their control settings without constantly resetting everything after a bad match.
+RANDA.MKCOOL Aim Sync is an unofficial CODM Sensitivity and Aim Optimizer utility for players who want a more consistent way to manage aim settings without constantly resetting sensitivity.
 
-Build a sensitivity profile from your own inputs, then view a clear Multiplayer and Battle Royale matrix covering camera, firing and gyroscope control categories.
+Build a repeatable profile around your own inputs, then view a clear Multiplayer and Battle Royale matrix covering camera, firing, and gyroscope control categories.
 
 KEY FEATURES
 
-• Sensitivity profile generation for Multiplayer and Battle Royale
-• Adjustable standard base sensitivity and field of view (FOV)
-• Rotation modes for Fixed Speed, Speed Acceleration and Distance Acceleration
-• Camera, firing and gyroscope output categories
-• Device-profile, playstyle and gyro input controls
-• One-tap copy for saving a generated configuration
-• Account-based purchase restoration after verified entitlement
-• Mobile-first interface for fast tuning sessions
+• CODM Sensitivity profile generation for Multiplayer and Battle Royale
+• Aim Optimizer workflow built around your selected base sensitivity and FOV
+• Rotation Mode support for Fixed Speed, Speed Acceleration, and Distance Acceleration
+• Camera Sensitivity, Firing Sensitivity, and Gyroscope Sensitivity output categories
+• One-Tap Copy Config for saving your generated profile
+• Account-based paid access restoration
+• Clean mobile-first interface designed for fast tuning sessions
 
-BUILT FOR CONSISTENCY
+FOR CODM PLAYERS WHO WANT CONSISTENCY
 
-If you keep changing sensitivity after every difficult match, Aim Sync gives you a structured profile to test instead of another random reset. Use the generated configuration as a controlled starting point, test changes in the in-game training environment, and adjust deliberately.
+If you keep changing sensitivity after every bad match, Aim Sync gives you a structured profile to test instead of another random reset. Use the generated configuration as a controlled starting point, test it in training, and make deliberate adjustments.
 
-PRIVACY AND ACCESS
+Players searching for CODM Sensitivity, Aim Optimizer tools, sensitivity calculators, FOV tuning, gyro setup, and aim-control utilities can use Aim Sync as a focused companion for building a repeatable setup.
 
-The calculation engine is kept server-side. Account and purchase checks are used to restore verified access without exposing private calculation logic in the mobile app.
+PRIVACY & ACCESS
 
-RANDA.MKCOOL Aim Sync is an unofficial utility. It is not affiliated with, endorsed by, sponsored by, or produced by Activision, Call of Duty, Tencent, or TiMi Studio Group.
+Protected calculations stay server-side. Paid access is tied to the signed-in account. Store-distributed builds must use Google Play Billing for the digital unlock and support purchase restoration before release.
 
-Generated profiles are tuning starting points, not guarantees of game performance. Test changes in training before treating any profile as final.
+RANDA.MKCOOL Aim Sync is an unofficial utility and is not affiliated with, endorsed by, or sponsored by Activision, Call of Duty, Tencent, or TiMi Studio Group.
 
-Privacy policy: https://pmnow6851-cyber.github.io/Randa/privacy.html
-Account deletion: https://pmnow6851-cyber.github.io/Randa/account-deletion.html
-Support: https://pmnow6851-cyber.github.io/Randa/support.html
-
-## Store metadata notes
-
-- App category: Tools or Utilities, depending on current Play Console choices.
-- Ads declaration: answer based on the submitted binary, not the web app. If no ad SDK is included in the store binary, declare no ads.
-- App access: if review requires login or paid entitlement, provide working reviewer credentials/instructions.
-- Do not mention external Stripe checkout or off-store purchase instructions in Play listing metadata for the native store build.
-- Do not claim “Pro Player Layouts” unless that feature is actually present in the submitted binary.
+Generated profiles are starting points. Test changes in the CODM training environment before treating any configuration as final.
