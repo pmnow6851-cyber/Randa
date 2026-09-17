@@ -36,9 +36,14 @@ REQUIRED_FILES = [
 
 SECRET_PATTERNS = {
     "Stripe live secret": re.compile(r"sk_live_[A-Za-z0-9]{16,}"),
+    "Stripe test secret": re.compile(r"sk_test_[A-Za-z0-9]{16,}"),
     "Stripe webhook secret": re.compile(r"whsec_[A-Za-z0-9]{16,}"),
     "Supabase secret": re.compile(r"sb_secret_[A-Za-z0-9_-]{16,}"),
     "Service-role assignment": re.compile(r"service_role\s*[:=]\s*[\"']?[A-Za-z0-9._-]{16,}", re.I),
+    "GitHub token": re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b"),
+    "OpenAI API secret": re.compile(r"\bsk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}\b"),
+    "AWS access key": re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"),
+    "Client-secret assignment": re.compile(r"client_secret\s*[:=]\s*[\"'][^\"']{12,}[\"']", re.I),
     "Private key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
 }
 
@@ -58,20 +63,20 @@ TRUSTED_EMAIL_SUFFIXES = ("@example.com", "@users.noreply.github.com")
 TRUSTED_EMAILS = {"randamkcool.systems@gmail.com"}
 
 FORBIDDEN_TRACKED_NAME_PATTERNS = (
-    re.compile(r"(^|/)\\.env(?:\\.|$)", re.I),
-    re.compile(r"\\.(?:pem|p12|pfx|jks|keystore|key)$", re.I),
-    re.compile(r"(^|/)(?:key\\.properties|service-account[^/]*\\.json|firebase-admin[^/]*\\.json|credentials[^/]*\\.json|client_secret[^/]*\\.json)$", re.I),
+    re.compile(r"(^|/)\.env(?:\.|$)", re.I),
+    re.compile(r"\.(?:pem|p12|pfx|jks|keystore|key)$", re.I),
+    re.compile(r"(^|/)(?:key\.properties|service-account[^/]*\.json|firebase-admin[^/]*\.json|credentials[^/]*\.json|client_secret[^/]*\.json)$", re.I),
 )
 
 PROTECTED_CLIENT_FILES = ("index.html", "flutter_app/lib/main.dart", "service-worker.js")
 PROTECTED_CLIENT_LOGIC_PATTERNS = {
-    "scope coefficient": re.compile(r"\\bscope[_\\s-]?(?:multiplier|factor|coefficient)s?\\b", re.I),
-    "camera coefficient": re.compile(r"\\bcamera[_\\s-]?(?:multiplier|factor|coefficient)s?\\b", re.I),
-    "firing coefficient": re.compile(r"\\bfiring[_\\s-]?(?:multiplier|factor|coefficient)s?\\b", re.I),
-    "gyro coefficient": re.compile(r"\\bgyro(?:scope)?[_\\s-]?(?:multiplier|factor|coefficient)s?\\b", re.I),
-    "FOV coefficient": re.compile(r"\\bfov[_\\s-]?(?:multiplier|factor|coefficient)s?\\b", re.I),
-    "rotation coefficient": re.compile(r"\\brotation[_\\s-]?(?:multiplier|factor|coefficient)s?\\b", re.I),
-    "playstyle coefficient": re.compile(r"\\bplaystyle[_\\s-]?(?:multiplier|factor|coefficient)s?\\b", re.I),
+    "scope coefficient": re.compile(r"\bscope[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
+    "camera coefficient": re.compile(r"\bcamera[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
+    "firing coefficient": re.compile(r"\bfiring[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
+    "gyro coefficient": re.compile(r"\bgyro(?:scope)?[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
+    "FOV coefficient": re.compile(r"\bfov[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
+    "rotation coefficient": re.compile(r"\brotation[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
+    "playstyle coefficient": re.compile(r"\bplaystyle[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
 }
 
 
