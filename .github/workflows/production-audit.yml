@@ -26,6 +26,12 @@ jobs:
       - name: Check out project
         uses: actions/checkout@v4
 
+      - name: Run repository security and privacy audit policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/randa_audit.py --output /tmp/RANDA_AUDIT_REPORT.md --log /tmp/randa-audit-log.md
+
       - name: Validate canonical production state
         shell: bash
         run: |
