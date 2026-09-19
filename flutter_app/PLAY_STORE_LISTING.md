@@ -1,6 +1,6 @@
 # Google Play Store Listing Draft
 
-> Draft for the future Android release. Do not publish until Play payments/billing compliance, release signing, privacy disclosures, and device testing are complete.
+> Store-ready metadata draft. Do not publish until native Play Billing purchase/restore, account deletion, signing, privacy declarations, and device testing pass the release gate.
 
 ## Title
 
@@ -8,33 +8,33 @@ CODM Aim Sync Optimizer
 
 ## Short description
 
-CODM Sensitivity, Aim Optimizer & Pro Player Layouts for smoother aim control.
+CODM Sensitivity and Aim Optimizer for smoother, repeatable aim control.
 
 ## Long description
 
-RANDA.MKCOOL Aim Sync is an unofficial CODM Sensitivity and Aim Optimizer utility built for players who want a more consistent way to manage their aim setup without endlessly changing settings.
+RANDA.MKCOOL Aim Sync is an unofficial CODM Sensitivity and Aim Optimizer utility for players who want a more consistent way to manage aim settings without constantly resetting sensitivity.
 
-Build a repeatable sensitivity profile around your own inputs, then view a clear multiplayer and battle royale matrix covering camera, firing, and gyroscope control categories.
+Build a repeatable profile around your own inputs, then view a clear Multiplayer and Battle Royale matrix covering camera, firing, and gyroscope control categories.
 
 KEY FEATURES
 
-• CODM Sensitivity profile generation for multiplayer and battle royale
+• CODM Sensitivity profile generation for Multiplayer and Battle Royale
 • Aim Optimizer workflow built around your selected base sensitivity and FOV
 • Rotation Mode support for Fixed Speed, Speed Acceleration, and Distance Acceleration
 • Camera Sensitivity, Firing Sensitivity, and Gyroscope Sensitivity output categories
-• One-Tap Copy Config for quickly saving your generated profile
+• One-Tap Copy Config for saving your generated profile
 • Account-based paid access restoration
 • Clean mobile-first interface designed for fast tuning sessions
 
 FOR CODM PLAYERS WHO WANT CONSISTENCY
 
-If you keep changing sensitivity after every bad match, Aim Sync gives you a structured profile to work from instead of another random reset. Use the generated configuration as a controlled starting point, test it in training, and make deliberate changes rather than chasing settings.
+If you keep changing sensitivity after every bad match, Aim Sync gives you a structured profile to test instead of another random reset. Use the generated configuration as a controlled starting point, test it in training, and make deliberate adjustments.
 
-Players researching CODM Sensitivity, Aim Optimizer tools, sensitivity calculators, FOV tuning, gyro setup, and Pro Player Layouts can use Aim Sync as a focused control companion for building a repeatable setup.
+Players searching for CODM Sensitivity, Aim Optimizer tools, sensitivity calculators, FOV tuning, gyro setup, and aim-control utilities can use Aim Sync as a focused companion for building a repeatable setup.
 
 PRIVACY & ACCESS
 
-The calculation engine is kept server-side. Paid access is tied to the signed-in account, so supported users can restore their entitlement without exposing the private Aim Sync calculation method in the app.
+Protected calculations stay server-side. Paid access is tied to the signed-in account. Store-distributed builds must use Google Play Billing for the digital unlock and support purchase restoration before release.
 
 RANDA.MKCOOL Aim Sync is an unofficial utility and is not affiliated with, endorsed by, or sponsored by Activision, Call of Duty, Tencent, or TiMi Studio Group.
 
