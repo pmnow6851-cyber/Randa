@@ -29,7 +29,7 @@ Aim Sync is a **£9.99 GBP one-time purchase**. Creating an account alone does n
 
 Protected calculations and payment verification are not published in this repository. Never post passwords, payment details, recovery codes, private identity information, or generated paid settings in issues or discussions.
 
-For account or purchase help, use the [official support page](https://pmnow6851-cyber.github.io/Randa/support.html).
+For purchase help, terms and privacy information, use the [official help page](https://pmnow6851-cyber.github.io/Randa/support.html).
 
 ## Disclaimer
 
