@@ -31,6 +31,24 @@ flutter build apk --debug
 
 The repository workflow `.github/workflows/flutter-android-check.yml` performs the same checks automatically and uploads a debug APK artifact after a successful build.
 
+## Firebase
+
+Firebase Core is included without replacing the existing Supabase authentication, entitlement, payment, or private calculation flow.
+
+After downloading `google-services.json` from the Firebase Console, place it at:
+
+`flutter_app/firebase/google-services.json`
+
+Then generate the Android wrapper and apply the Firebase wiring:
+
+```bash
+flutter create --platforms=android --project-name randa_mkcool_aim_sync --org systems.randamkcool .
+bash configure_firebase_android.sh
+flutter pub get
+```
+
+The GitHub Android workflow runs the same configurator automatically. If the Firebase config file is not present, the client still builds and the existing Supabase flow remains usable.
+
 ## AdMob
 
 `main.dart` includes an explicit AdMob banner placeholder only. Keep test ads during development. Add the official Google Mobile Ads Flutter package and production AdMob App ID/ad-unit IDs only after the AdMob app is created and policy requirements are ready.

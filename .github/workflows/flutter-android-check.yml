@@ -48,6 +48,10 @@ jobs:
         working-directory: flutter_app
         run: flutter create --platforms=android --project-name randa_mkcool_aim_sync --org systems.randamkcool .
 
+      - name: Configure Firebase Android when config is present
+        working-directory: flutter_app
+        run: bash configure_firebase_android.sh
+
       - name: Harden generated Android wrapper
         working-directory: flutter_app
         shell: bash
