@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#071018">
+  <meta name="referrer" content="no-referrer">
   <meta name="description" content="RANDA.MKCOOL Aim Sync System. Paid CODM sensitivity profile generator.">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -40,11 +41,11 @@
   const CALC_URL=SUPABASE_URL+'/functions/v1/calculate-aim-sync';
   const HEALTH_URL=SUPABASE_URL+'/functions/v1/system-health';
   const TOKEN_KEY='RANDA_AUTH_TOKEN_V1',REFRESH_KEY='RANDA_REFRESH_TOKEN_V1',PROFILE_KEY='RANDA_AIM_PROFILE_V5';
-  let accessToken=localStorage.getItem(TOKEN_KEY)||'',refreshToken=localStorage.getItem(REFRESH_KEY)||'',currentUser=null,isPro=false,paymentReady=false,lastResult=null,deferredPrompt=null,snackTimer=null,calcTimer=null,calcSequence=0;
+  let accessToken=sessionStorage.getItem(TOKEN_KEY)||'',refreshToken=sessionStorage.getItem(REFRESH_KEY)||'',currentUser=null,isPro=false,paymentReady=false,lastResult=null,deferredPrompt=null,snackTimer=null,calcTimer=null,calcSequence=0;
   const $=id=>document.getElementById(id),fields=['base','fov','mode','device','rotation','playstyle','gyro'],sleep=ms=>new Promise(r=>setTimeout(r,ms));
   function snack(t){const e=$('snack');e.textContent=t;e.classList.add('show');clearTimeout(snackTimer);snackTimer=setTimeout(()=>e.classList.remove('show'),2600)}
   function notice(t,type='warn'){const e=$('notice');e.textContent=t;e.className='notice show '+type}function clearNotice(){$('notice').className='notice';$('notice').textContent=''}
-  function saveTokens(d){accessToken=d?.access_token||'';refreshToken=d?.refresh_token||'';accessToken?localStorage.setItem(TOKEN_KEY,accessToken):localStorage.removeItem(TOKEN_KEY);refreshToken?localStorage.setItem(REFRESH_KEY,refreshToken):localStorage.removeItem(REFRESH_KEY)}
+  function saveTokens(d){accessToken=d?.access_token||'';refreshToken=d?.refresh_token||'';accessToken?sessionStorage.setItem(TOKEN_KEY,accessToken):sessionStorage.removeItem(TOKEN_KEY);refreshToken?sessionStorage.setItem(REFRESH_KEY,refreshToken):sessionStorage.removeItem(REFRESH_KEY)}
   async function api(path,opt={}){return fetch(SUPABASE_URL+path,{...opt,headers:{apikey:SUPABASE_KEY,'content-type':'application/json',...(opt.headers||{})}})}
   async function signUp(){clearNotice();const email=$('email').value.trim(),password=$('password').value;if(!email||password.length<8){notice('Enter a valid email and a password of at least 8 characters.','bad');return}$('signUpBtn').disabled=true;try{const r=await api('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password})}),d=await r.json();if(!r.ok)throw new Error(d?.msg||d?.message||d?.error_description||'Account creation failed');if(d.access_token){saveTokens(d);await restoreSession();notice('Account created. Payment is still required to unlock Aim Sync.','ok')}else notice('Account created. If email confirmation is required, confirm it and then sign in. Payment is still required.','ok')}catch(e){notice(e.message,'bad')}finally{$('signUpBtn').disabled=false}}
   async function signIn(){clearNotice();const email=$('email').value.trim(),password=$('password').value;if(!email||!password){notice('Enter your email and password.','bad');return}$('signInBtn').disabled=true;try{const r=await api('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})}),d=await r.json();if(!r.ok)throw new Error(d?.msg||d?.message||d?.error_description||'Sign-in failed');saveTokens(d);await restoreSession();notice(isPro?'Paid access restored.':'Signed in. Payment is required to unlock Aim Sync.',isPro?'ok':'warn')}catch(e){notice(e.message,'bad')}finally{$('signInBtn').disabled=false}}

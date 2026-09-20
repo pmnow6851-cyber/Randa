@@ -36,9 +36,14 @@ REQUIRED_FILES = [
 
 SECRET_PATTERNS = {
     "Stripe live secret": re.compile(r"sk_live_[A-Za-z0-9]{16,}"),
+    "Stripe test secret": re.compile(r"sk_test_[A-Za-z0-9]{16,}"),
     "Stripe webhook secret": re.compile(r"whsec_[A-Za-z0-9]{16,}"),
     "Supabase secret": re.compile(r"sb_secret_[A-Za-z0-9_-]{16,}"),
     "Service-role assignment": re.compile(r"service_role\s*[:=]\s*[\"']?[A-Za-z0-9._-]{16,}", re.I),
+    "GitHub token": re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b"),
+    "OpenAI API secret": re.compile(r"\bsk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}\b"),
+    "AWS access key": re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"),
+    "Client-secret assignment": re.compile(r"client_secret\s*[:=]\s*[\"'][^\"']{12,}[\"']", re.I),
     "Private key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
 }
 
@@ -53,15 +58,26 @@ UK_PHONE_RE = re.compile(r"(?<!\d)(?:\+44\s?7\d{3}|07\d{3})[\s-]?\d{3}[\s-]?\d{3
 UK_POSTCODE_RE = re.compile(r"\b(?:GIR\s?0AA|[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})\b", re.I)
 
 TEXT_EXCLUDED_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico", ".zip"}
-PII_SCAN_EXCLUDES = {
-    "README.md",
-    "PROJECT-STATUS.md",
-    "AI-HANDOFF.md",
-    "docs/SECURITY-PRIVACY.md",
-    "docs/OPERATIONS.md",
-}
+PII_SCAN_EXCLUDES = set()
 TRUSTED_EMAIL_SUFFIXES = ("@example.com", "@users.noreply.github.com")
 TRUSTED_EMAILS = {"randamkcool.systems@gmail.com"}
+
+FORBIDDEN_TRACKED_NAME_PATTERNS = (
+    re.compile(r"(^|/)\.env(?:\.|$)", re.I),
+    re.compile(r"\.(?:pem|p12|pfx|jks|keystore|key)$", re.I),
+    re.compile(r"(^|/)(?:key\.properties|service-account[^/]*\.json|firebase-admin[^/]*\.json|credentials[^/]*\.json|client_secret[^/]*\.json)$", re.I),
+)
+
+PROTECTED_CLIENT_FILES = ("index.html", "flutter_app/lib/main.dart", "service-worker.js")
+PROTECTED_CLIENT_LOGIC_PATTERNS = {
+    "scope coefficient": re.compile(r"\bscope[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
+    "camera coefficient": re.compile(r"\bcamera[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
+    "firing coefficient": re.compile(r"\bfiring[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
+    "gyro coefficient": re.compile(r"\bgyro(?:scope)?[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
+    "FOV coefficient": re.compile(r"\bfov[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
+    "rotation coefficient": re.compile(r"\brotation[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
+    "playstyle coefficient": re.compile(r"\bplaystyle[_\s-]?(?:multiplier|factor|coefficient)s?\b", re.I),
+}
 
 
 def tracked_text_files():
@@ -77,6 +93,56 @@ def tracked_text_files():
 def check_required(results):
     missing = [p for p in REQUIRED_FILES if not (ROOT / p).exists()]
     results.append(("Required production/operations files", not missing, "OK" if not missing else f"Missing: {', '.join(missing)}"))
+
+
+def check_forbidden_tracked_files(results):
+    hits = []
+    for path in ROOT.rglob("*"):
+        if not path.is_file() or ".git" in path.parts:
+            continue
+        rel = str(path.relative_to(ROOT))
+        if rel == ".env.example":
+            continue
+        if any(pattern.search(rel) for pattern in FORBIDDEN_TRACKED_NAME_PATTERNS):
+            hits.append(rel)
+    results.append((
+        "Forbidden credential/signing files",
+        not hits,
+        "No forbidden tracked credential/signing files found" if not hits else "; ".join(sorted(set(hits))),
+    ))
+
+
+def check_protected_client_logic(results):
+    hits = []
+    for rel in PROTECTED_CLIENT_FILES:
+        path = ROOT / rel
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for label, pattern in PROTECTED_CLIENT_LOGIC_PATTERNS.items():
+            if pattern.search(text):
+                hits.append(f"{label} marker in {rel}")
+    results.append((
+        "Protected calculation logic stays server-side",
+        not hits,
+        "No protected coefficient/multiplier markers found in public clients" if not hits else "; ".join(hits),
+    ))
+
+
+def check_web_auth_storage(results):
+    path = ROOT / "index.html"
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    unsafe = (
+        "localStorage.getItem(TOKEN_KEY)" in text
+        or "localStorage.getItem(REFRESH_KEY)" in text
+        or "localStorage.setItem(TOKEN_KEY" in text
+        or "localStorage.setItem(REFRESH_KEY" in text
+    )
+    results.append((
+        "Web auth tokens are not persisted in localStorage",
+        not unsafe,
+        "Auth tokens use session-scoped storage" if not unsafe else "Auth token persistence detected in localStorage",
+    ))
 
 
 def check_canonical_state(results):
@@ -245,6 +311,9 @@ def main():
     timestamp = dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
     results = []
     check_required(results)
+    check_forbidden_tracked_files(results)
+    check_protected_client_logic(results)
+    check_web_auth_storage(results)
     check_canonical_state(results)
     check_seo(results)
     check_secrets(results)
