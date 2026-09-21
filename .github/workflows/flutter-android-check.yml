@@ -30,7 +30,7 @@ jobs:
       - name: Reject tracked Android signing and Firebase config
         shell: bash
         run: |
-          tracked="$(git ls-files | grep -Ei '(^|/)(key\.properties|[^/]+\.(jks|keystore|p12|pfx))$' || true)"
+          tracked="$(git ls-files | grep -Ei '(^|/)(google-services\.json|key\.properties|[^/]+\.(jks|keystore|p12|pfx))$' || true)"
           if [ -n "$tracked" ]; then
             echo "Refusing build: Android signing material or google-services.json is tracked in Git."
             echo "$tracked"
