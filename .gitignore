@@ -40,6 +40,10 @@ key.properties
 service-account*.json
 firebase-admin*.json
 
+# Firebase Android client config is owner-controlled; never commit it.
+flutter_app/firebase/google-services.json
+flutter_app/android/app/google-services.json
+
 # Supabase / Stripe backend secrets
 .supabase/
 supabase/.temp/

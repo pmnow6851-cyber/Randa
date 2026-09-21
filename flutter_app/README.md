@@ -35,9 +35,11 @@ The repository workflow `.github/workflows/flutter-android-check.yml` performs t
 
 Firebase Core is included without replacing the existing Supabase authentication, entitlement, payment, or private calculation flow.
 
-After downloading `google-services.json` from the Firebase Console, place it at:
+After downloading `google-services.json` from the Firebase Console, keep it owner-controlled and place it locally at:
 
 `flutter_app/firebase/google-services.json`
+
+That path is Git-ignored and the repository audit rejects a tracked `google-services.json`. The configuration must contain the Android package `systems.randamkcool.randa_mkcool_aim_sync` or the bootstrap script stops.
 
 Then generate the Android wrapper and apply the Firebase wiring:
 
@@ -47,7 +49,7 @@ bash configure_firebase_android.sh
 flutter pub get
 ```
 
-The GitHub Android workflow runs the same configurator automatically. If the Firebase config file is not present, the client still builds and the existing Supabase flow remains usable.
+The GitHub Android workflow runs the same configurator automatically. For owner-controlled CI testing, store a base64-encoded copy in the encrypted repository secret `FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64`; the workflow restores it only for the build and deletes the temporary copies afterward. If the secret is not configured, the client still builds and the existing Supabase flow remains usable.
 
 ## AdMob
 

@@ -7,6 +7,7 @@ CONFIG="firebase/google-services.json"
 SETTINGS="android/settings.gradle.kts"
 APP_GRADLE="android/app/build.gradle.kts"
 DEST="android/app/google-services.json"
+EXPECTED_PACKAGE="systems.randamkcool.randa_mkcool_aim_sync"
 
 if [[ ! -f "$CONFIG" ]]; then
   echo "Firebase config not present at $CONFIG; leaving Firebase Android wiring disabled."
@@ -17,6 +18,27 @@ if [[ ! -f "$SETTINGS" || ! -f "$APP_GRADLE" ]]; then
   echo "Android wrapper is missing. Run flutter create --platforms=android first."
   exit 1
 fi
+
+python3 - "$CONFIG" "$EXPECTED_PACKAGE" <<'PY'
+import json
+import sys
+
+config_path, expected = sys.argv[1], sys.argv[2]
+with open(config_path, encoding="utf-8") as handle:
+    data = json.load(handle)
+packages = {
+    client.get("client_info", {})
+    .get("android_client_info", {})
+    .get("package_name")
+    for client in data.get("client", [])
+}
+packages.discard(None)
+if expected not in packages:
+    found = ", ".join(sorted(packages)) or "none"
+    raise SystemExit(
+        f"Firebase config package mismatch: expected {expected}; found {found}"
+    )
+PY
 
 cp "$CONFIG" "$DEST"
 

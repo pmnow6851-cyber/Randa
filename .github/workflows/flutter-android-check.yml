@@ -27,12 +27,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Reject tracked Android signing secrets
+      - name: Reject tracked Android signing and Firebase config
         shell: bash
         run: |
           tracked="$(git ls-files | grep -Ei '(^|/)(key\.properties|[^/]+\.(jks|keystore|p12|pfx))$' || true)"
           if [ -n "$tracked" ]; then
-            echo "Refusing build: Android signing material is tracked in Git."
+            echo "Refusing build: Android signing material or google-services.json is tracked in Git."
             echo "$tracked"
             exit 1
           fi
@@ -47,6 +47,21 @@ jobs:
       - name: Generate Android wrapper
         working-directory: flutter_app
         run: flutter create --platforms=android --project-name randa_mkcool_aim_sync --org systems.randamkcool .
+
+      - name: Restore owner-controlled Firebase Android config
+        working-directory: flutter_app
+        shell: bash
+        env:
+          FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64: ${{ secrets.FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64:-}" ]; then
+            echo "Firebase Android config secret not configured; fallback build will continue."
+            exit 0
+          fi
+          mkdir -p firebase
+          printf '%s' "$FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64" | base64 --decode > firebase/google-services.json
+          chmod 600 firebase/google-services.json
 
       - name: Configure Firebase Android when config is present
         working-directory: flutter_app
@@ -113,3 +128,9 @@ jobs:
           name: randa-mkcool-android-debug-aab-not-for-publishing
           path: flutter_app/build/app/outputs/bundle/debug/app-debug.aab
           if-no-files-found: error
+
+      - name: Remove temporary Firebase config
+        if: always()
+        working-directory: flutter_app
+        shell: bash
+        run: rm -f firebase/google-services.json android/app/google-services.json
