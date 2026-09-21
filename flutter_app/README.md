@@ -49,7 +49,7 @@ bash configure_firebase_android.sh
 flutter pub get
 ```
 
-The GitHub Android workflow runs the same configurator automatically. For owner-controlled CI testing, store a base64-encoded copy in the encrypted repository secret `FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64`; the workflow restores it only for the build and deletes the temporary copies afterward. If the secret is not configured, the client still builds and the existing Supabase flow remains usable.
+The GitHub Android workflow runs the same configurator automatically. For owner-controlled CI testing, store a base64-encoded copy in the encrypted repository secret `FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64`; the workflow restores it only for the build and deletes the temporary copies afterward. The release-readiness workflow now fails closed when that secret is missing, so a green Android check proves the real Firebase configuration was supplied and validated. Local startup still handles unavailable Firebase gracefully, and the existing Supabase paid flow remains unchanged.
 
 ## AdMob
 
