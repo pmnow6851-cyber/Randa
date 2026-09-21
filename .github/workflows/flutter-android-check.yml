@@ -56,8 +56,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64:-}" ]; then
-            echo "Firebase Android config secret not configured; fallback build will continue."
-            exit 0
+            echo "::error::Firebase Android release-readiness is not verified because FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64 is not configured."
+            echo "Add the owner-controlled base64 google-services.json as the repository Actions secret, then rerun this check."
+            exit 1
           fi
           mkdir -p firebase
           printf '%s' "$FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64" | base64 --decode > firebase/google-services.json
