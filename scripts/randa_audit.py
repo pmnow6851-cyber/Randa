@@ -45,7 +45,6 @@ SECRET_PATTERNS = {
     "OpenAI API secret": re.compile(r"\bsk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}\b"),
     "AWS access key": re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"),
     "Client-secret assignment": re.compile(r"client_secret\s*[:=]\s*[\"'][^\"']{12,}[\"']", re.I),
-    re.compile(r"(^|/)google-services\.json$", re.I),
     "Private key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
 }
 
@@ -68,6 +67,7 @@ FORBIDDEN_TRACKED_NAME_PATTERNS = (
     re.compile(r"(^|/)\.env(?:\.|$)", re.I),
     re.compile(r"\.(?:pem|p12|pfx|jks|keystore|key)$", re.I),
     re.compile(r"(^|/)(?:key\.properties|service-account[^/]*\.json|firebase-admin[^/]*\.json|credentials[^/]*\.json|client_secret[^/]*\.json)$", re.I),
+    re.compile(r"(^|/)google-services\.json$", re.I),
 )
 
 PROTECTED_CLIENT_FILES = ("index.html", "flutter_app/lib/main.dart", "service-worker.js")
