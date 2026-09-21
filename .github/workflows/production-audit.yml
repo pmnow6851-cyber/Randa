@@ -19,6 +19,7 @@ concurrency:
 
 jobs:
   audit:
+    name: RANDA Production Audit Gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
