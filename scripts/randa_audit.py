@@ -45,6 +45,7 @@ SECRET_PATTERNS = {
     "OpenAI API secret": re.compile(r"\bsk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}\b"),
     "AWS access key": re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"),
     "Client-secret assignment": re.compile(r"client_secret\s*[:=]\s*[\"'][^\"']{12,}[\"']", re.I),
+    re.compile(r"(^|/)google-services\.json$", re.I),
     "Private key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
 }
 
