@@ -51,11 +51,11 @@ flutter pub get
 
 The GitHub Android workflow runs the same configurator automatically. For owner-controlled CI testing, store a base64-encoded copy in the encrypted repository secret `FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64`; the workflow restores it only for the build and deletes the temporary copies afterward. The release-readiness workflow now fails closed when that secret is missing, so a green Android check proves the real Firebase configuration was supplied and validated. Local startup still handles unavailable Firebase gracefully, and the existing Supabase paid flow remains unchanged.
 
-## AdMob
+## Monetisation guardrail
 
-`main.dart` includes an explicit AdMob banner placeholder only. Keep test ads during development. Add the official Google Mobile Ads Flutter package and production AdMob App ID/ad-unit IDs only after the AdMob app is created and policy requirements are ready.
+The Android client follows the same paid-access model as the production system: one verified one-time unlock, with entitlement checked server-side. Do not add advertising, free-user bypasses, alternate checkout providers, or client-side payment secrets to the release build.
 
-Do not commit private bank details or account-verification documents. Ad-unit identifiers are app configuration, but payout/bank information belongs only inside the Google payments profile.
+Bank details, payout data, signing keys, service-role keys, and payment-provider secrets must remain outside the repository.
 
 ## Release rule
 
