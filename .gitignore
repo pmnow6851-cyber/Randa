@@ -39,6 +39,9 @@ backups/private/
 key.properties
 service-account*.json
 firebase-admin*.json
+flutter_app/firebase/google-services.json
+flutter_app/android/app/google-services.json
+flutter_app/ios/Runner/GoogleService-Info.plist
 
 # Supabase / Stripe backend secrets
 .supabase/
