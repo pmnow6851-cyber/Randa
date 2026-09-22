@@ -31,11 +31,11 @@ flutter build apk --debug
 
 The repository workflow `.github/workflows/flutter-android-check.yml` performs the same checks automatically and uploads a debug APK artifact after a successful build.
 
-## AdMob
+## Monetisation guardrail
 
-`main.dart` includes an explicit AdMob banner placeholder only. Keep test ads during development. Add the official Google Mobile Ads Flutter package and production AdMob App ID/ad-unit IDs only after the AdMob app is created and policy requirements are ready.
+The Android client follows the same paid-access model as the production system: one verified one-time unlock, with entitlement checked server-side. Do not add advertising, free-user bypasses, alternate checkout providers, or client-side payment secrets to the release build.
 
-Do not commit private bank details or account-verification documents. Ad-unit identifiers are app configuration, but payout/bank information belongs only inside the Google payments profile.
+Bank details, payout data, signing keys, service-role keys, and payment-provider secrets must remain outside the repository.
 
 ## Release rule
 
