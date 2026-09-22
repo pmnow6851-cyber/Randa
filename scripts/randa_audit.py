@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import re
 import subprocess
@@ -61,7 +62,7 @@ UK_POSTCODE_RE = re.compile(r"\b(?:GIR\s?0AA|[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})\
 TEXT_EXCLUDED_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico", ".zip"}
 PII_SCAN_EXCLUDES = set()
 TRUSTED_EMAIL_SUFFIXES = ("@example.com", "@users.noreply.github.com")
-TRUSTED_EMAILS = set()
+PUBLIC_CONTACT_EMAIL_HASHES = {"support.html": {"f0b52beb11dab90c5140ca9fae605391bb169b34e992a6e83758399b2a0429c4"}}
 
 FORBIDDEN_TRACKED_NAME_PATTERNS = (
     re.compile(r"(^|/)\.env(?:\.|$)", re.I),
@@ -235,7 +236,10 @@ def check_pii_literals(results):
             continue
         for email in EMAIL_RE.findall(text):
             lowered = email.lower()
-            if lowered in TRUSTED_EMAILS or lowered.endswith(TRUSTED_EMAIL_SUFFIXES):
+            email_hash = hashlib.sha256(lowered.encode("utf-8")).hexdigest()
+            if lowered.endswith(TRUSTED_EMAIL_SUFFIXES):
+                continue
+            if email_hash in PUBLIC_CONTACT_EMAIL_HASHES.get(rel, set()):
                 continue
             hits.append(f"email literal in {rel}")
             break
