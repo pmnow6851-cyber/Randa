@@ -31,26 +31,6 @@ flutter build apk --debug
 
 The repository workflow `.github/workflows/flutter-android-check.yml` performs the same checks automatically and uploads a debug APK artifact after a successful build.
 
-## Firebase
-
-Firebase Core is included without replacing the existing Supabase authentication, entitlement, payment, or private calculation flow.
-
-After downloading `google-services.json` from the Firebase Console, keep it owner-controlled and place it locally at:
-
-`flutter_app/firebase/google-services.json`
-
-That path is Git-ignored and the repository audit rejects a tracked `google-services.json`. The configuration must contain the Android package `systems.randamkcool.randa_mkcool_aim_sync` or the bootstrap script stops.
-
-Then generate the Android wrapper and apply the Firebase wiring:
-
-```bash
-flutter create --platforms=android --project-name randa_mkcool_aim_sync --org systems.randamkcool .
-bash configure_firebase_android.sh
-flutter pub get
-```
-
-The GitHub Android workflow runs the same configurator automatically. For owner-controlled CI testing, store a base64-encoded copy in the encrypted repository secret `FIREBASE_ANDROID_GOOGLE_SERVICES_JSON_B64`; the workflow restores it only for the build and deletes the temporary copies afterward. The release-readiness workflow now fails closed when that secret is missing, so a green Android check proves the real Firebase configuration was supplied and validated. Local startup still handles unavailable Firebase gracefully, and the existing Supabase paid flow remains unchanged.
-
 ## Monetisation guardrail
 
 The Android client follows the same paid-access model as the production system: one verified one-time unlock, with entitlement checked server-side. Do not add advertising, free-user bypasses, alternate checkout providers, or client-side payment secrets to the release build.
