@@ -12,3 +12,16 @@ updates:
       - "dependencies"
     commit-message:
       prefix: "chore(actions)"
+  
+  - package-ecosystem: "pub"
+    directory: "/flutter_app"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "Etc/UTC"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(pub)"

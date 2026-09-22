@@ -11,6 +11,7 @@ import argparse
 import datetime as dt
 import json
 import re
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -65,7 +66,7 @@ TRUSTED_EMAILS = {"randamkcool.systems@gmail.com"}
 FORBIDDEN_TRACKED_NAME_PATTERNS = (
     re.compile(r"(^|/)\.env(?:\.|$)", re.I),
     re.compile(r"\.(?:pem|p12|pfx|jks|keystore|key)$", re.I),
-    re.compile(r"(^|/)(?:key\.properties|service-account[^/]*\.json|firebase-admin[^/]*\.json|credentials[^/]*\.json|client_secret[^/]*\.json)$", re.I),
+    re.compile(r"(^|/)(?:key\.properties|service-account[^/]*\.json|firebase-admin[^/]*\.json|credentials[^/]*\.json|client_secret[^/]*\.json|google-services\.json|GoogleService-Info\.plist)$", re.I),
 )
 
 PROTECTED_CLIENT_FILES = ("index.html", "flutter_app/lib/main.dart", "service-worker.js")
@@ -80,9 +81,23 @@ PROTECTED_CLIENT_LOGIC_PATTERNS = {
 }
 
 
+def tracked_relative_paths():
+    try:
+        raw = subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout.decode("utf-8", "replace")
+    except (OSError, subprocess.CalledProcessError):
+        return []
+    return [rel for rel in raw.split("\0") if rel]
+
+
 def tracked_text_files():
-    for path in ROOT.rglob("*"):
-        if not path.is_file() or ".git" in path.parts or path.suffix.lower() in TEXT_EXCLUDED_SUFFIXES:
+    for rel in tracked_relative_paths():
+        path = ROOT / rel
+        if not path.is_file() or path.suffix.lower() in TEXT_EXCLUDED_SUFFIXES:
             continue
         try:
             yield path, path.read_text(encoding="utf-8")
@@ -97,10 +112,7 @@ def check_required(results):
 
 def check_forbidden_tracked_files(results):
     hits = []
-    for path in ROOT.rglob("*"):
-        if not path.is_file() or ".git" in path.parts:
-            continue
-        rel = str(path.relative_to(ROOT))
+    for rel in tracked_relative_paths():
         if rel == ".env.example":
             continue
         if any(pattern.search(rel) for pattern in FORBIDDEN_TRACKED_NAME_PATTERNS):
@@ -109,6 +121,45 @@ def check_forbidden_tracked_files(results):
         "Forbidden credential/signing files",
         not hits,
         "No forbidden tracked credential/signing files found" if not hits else "; ".join(sorted(set(hits))),
+    ))
+
+
+
+def check_workflow_security_policy(results):
+    hits = []
+    workflows = sorted((ROOT / ".github" / "workflows").glob("*.y*ml"))
+    for path in workflows:
+        rel = str(path.relative_to(ROOT))
+        text = path.read_text(encoding="utf-8")
+
+        if re.search(r"(?m)^\s*pull_request_target\s*:", text):
+            hits.append(f"pull_request_target is forbidden in {rel}")
+        if re.search(r"(?m)^\s*permissions\s*:\s*write-all\s*$", text):
+            hits.append(f"write-all permissions found in {rel}")
+        if re.search(r"(?m)^\s*contents\s*:\s*write\s*$", text):
+            hits.append(f"contents: write found in {rel}")
+
+        checkout_count = len(re.findall(r"uses:\s*actions/checkout@", text))
+        hardened_checkout_count = len(re.findall(r"persist-credentials:\s*false", text))
+        if hardened_checkout_count < checkout_count:
+            hits.append(f"checkout persists credentials in {rel}")
+
+        for match in re.finditer(r"uses:\s*([^\s#]+)", text):
+            ref = match.group(1)
+            if ref.startswith("./"):
+                continue
+            if "@" not in ref:
+                hits.append(f"unversioned action in {rel}: {ref}")
+                continue
+            version = ref.rsplit("@", 1)[1]
+            if not re.fullmatch(r"[0-9a-fA-F]{40}", version):
+                hits.append(f"action is not pinned to a full commit SHA in {rel}: {ref}")
+
+    results.append((
+        "GitHub Actions supply-chain policy",
+        not hits,
+        "Actions are SHA-pinned, checkout credentials are disabled, and dangerous workflow triggers/permissions are absent"
+        if not hits else "; ".join(hits),
     ))
 
 
@@ -312,6 +363,7 @@ def main():
     results = []
     check_required(results)
     check_forbidden_tracked_files(results)
+    check_workflow_security_policy(results)
     check_protected_client_logic(results)
     check_web_auth_storage(results)
     check_canonical_state(results)
