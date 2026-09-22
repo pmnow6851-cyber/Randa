@@ -564,8 +564,6 @@ class _AimSyncHomeState extends State<AimSyncHome>
             if (!_isPro) ...[
               _unlockCard(),
               const SizedBox(height: 14),
-              const AdBannerPlaceholder(),
-              const SizedBox(height: 14),
             ],
             if (_checkingAccess)
               const _Panel(
@@ -972,29 +970,4 @@ class _ResultTable extends StatelessWidget {
       ),
     );
   }
-}
-
-class AdBannerPlaceholder extends StatelessWidget {
-  const AdBannerPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) => _Panel(
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-          child: const Column(
-            children: [
-              Icon(Icons.ads_click_outlined, color: Color(0xFF8AA3B0)),
-              SizedBox(height: 6),
-              Text('ADMOB BANNER SLOT', style: TextStyle(fontWeight: FontWeight.w900)),
-              SizedBox(height: 4),
-              Text(
-                'Drop the production BannerAd widget here after your AdMob app and ad-unit IDs are issued. Never commit private account or bank details.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Color(0xFF8AA3B0), fontSize: 11),
-              ),
-            ],
-          ),
-        ),
-      );
 }
