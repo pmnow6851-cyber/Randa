@@ -61,7 +61,7 @@ UK_POSTCODE_RE = re.compile(r"\b(?:GIR\s?0AA|[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})\
 TEXT_EXCLUDED_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico", ".zip"}
 PII_SCAN_EXCLUDES = set()
 TRUSTED_EMAIL_SUFFIXES = ("@example.com", "@users.noreply.github.com")
-TRUSTED_EMAILS = {"randamkcool.systems@gmail.com"}
+TRUSTED_EMAILS = set()
 
 FORBIDDEN_TRACKED_NAME_PATTERNS = (
     re.compile(r"(^|/)\.env(?:\.|$)", re.I),
