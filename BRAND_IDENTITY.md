@@ -7,7 +7,7 @@ This file is the public source of truth for the RANDA.MKCOOL project identity.
 - Brand: **RANDA.MKCOOL**
 - Product: **RANDA.MKCOOL AIM SYNC**
 - Public app: **https://pmnow6851-cyber.github.io/Randa/**
-- Customer support: **randamkcool.systems@gmail.com**
+- Customer support: use the approved business contact published on `support.html`.
 - Public social display name: **RANDA.MKCOOL**
 - Public social handle target: use the closest available form of **@RandaMkCool** consistently across platforms.
 
