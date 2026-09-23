@@ -1,0 +1,18 @@
+gradle-wrapper.jar
+/.gradle
+/captures/
+/gradlew
+/gradlew.bat
+/local.properties
+GeneratedPluginRegistrant.java
+.cxx/
+
+# Never commit Firebase client config or signing material.
+google-services.json
+**/google-services.json
+key.properties
+signing.properties
+**/*.keystore
+**/*.jks
+**/*.p12
+**/*.pfx

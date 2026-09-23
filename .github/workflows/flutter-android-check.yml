@@ -34,12 +34,24 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          tracked="$(git ls-files | grep -Ei '(^|/)(google-services\.json|GoogleService-Info\.plist|key\.properties|[^/]+\.(jks|keystore|p12|pfx))$' || true)"
+          tracked="$(git ls-files | grep -Ei '(^|/)(google-services\.json|GoogleService-Info\.plist|key\.properties|signing\.properties|[^/]+\.(jks|keystore|p12|pfx))$' || true)"
           if [ -n "$tracked" ]; then
             echo "Refusing build: Android signing material or Firebase client config is tracked in Git."
             echo "$tracked"
             exit 1
           fi
+
+      - name: Require committed Android project
+        working-directory: flutter_app
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f android/settings.gradle.kts
+          test -f android/build.gradle.kts
+          test -f android/app/build.gradle.kts
+          test -f android/app/src/main/AndroidManifest.xml
+          test -f android/app/src/main/kotlin/systems/randamkcool/randa_mkcool_aim_sync/MainActivity.kt
+          test -f android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Install Flutter 3.47.2
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
@@ -48,53 +60,23 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Generate Android wrapper
-        working-directory: flutter_app
-        run: flutter create --platforms=android --project-name randa_mkcool_aim_sync --org systems.randamkcool .
-
-      - name: Harden generated Android wrapper
-        working-directory: flutter_app
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          gradle = Path('android/app/build.gradle.kts')
-          text = gradle.read_text()
-          text = text.replace('compileSdk = flutter.compileSdkVersion', 'compileSdk = 36')
-          text = text.replace('minSdk = flutter.minSdkVersion', 'minSdk = 24')
-          text = text.replace('targetSdk = flutter.targetSdkVersion', 'targetSdk = 36')
-          gradle.write_text(text)
-
-          manifest = Path('android/app/src/main/AndroidManifest.xml')
-          text = manifest.read_text()
-          if 'android:allowBackup=' not in text:
-              text = text.replace(
-                  '<application',
-                  '<application\n        android:allowBackup="false"\n        android:usesCleartextTraffic="false"',
-                  1,
-              )
-          elif 'android:usesCleartextTraffic=' not in text:
-              text = text.replace(
-                  'android:allowBackup="false"',
-                  'android:allowBackup="false"\n        android:usesCleartextTraffic="false"',
-                  1,
-              )
-          manifest.write_text(text)
-          PY
-          rm -f test/widget_test.dart
-
-      - name: Verify Android release identity and SDK policy
+      - name: Verify Android release identity and security policy
         working-directory: flutter_app
         shell: bash
         run: |
           set -euo pipefail
           grep -q 'applicationId = "systems.randamkcool.randa_mkcool_aim_sync"' android/app/build.gradle.kts
+          grep -q 'namespace = "systems.randamkcool.randa_mkcool_aim_sync"' android/app/build.gradle.kts
           grep -q 'compileSdk = 36' android/app/build.gradle.kts
           grep -q 'minSdk = 24' android/app/build.gradle.kts
           grep -q 'targetSdk = 36' android/app/build.gradle.kts
           grep -q 'android:allowBackup="false"' android/app/src/main/AndroidManifest.xml
           grep -q 'android:usesCleartextTraffic="false"' android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml
+          if grep -q 'signingConfigs.getByName("debug")' android/app/build.gradle.kts; then
+            echo "Refusing release policy: release build must not use debug signing."
+            exit 1
+          fi
 
       - name: Resolve dependencies
         working-directory: flutter_app
@@ -104,13 +86,13 @@ jobs:
         working-directory: flutter_app
         run: flutter analyze
 
-      - name: Build debug APK
+      - name: Build debug APK from committed Android project
         working-directory: flutter_app
         run: flutter build apk --debug
 
-      - name: Build debug Android App Bundle
+      - name: Build release Android App Bundle from committed Android project
         working-directory: flutter_app
-        run: flutter build appbundle --debug
+        run: flutter build appbundle --release
 
       - name: Upload debug APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -119,9 +101,9 @@ jobs:
           path: flutter_app/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
 
-      - name: Upload debug AAB policy-check artifact
+      - name: Upload unsigned release AAB validation artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: randa-mkcool-android-debug-aab-not-for-publishing
-          path: flutter_app/build/app/outputs/bundle/debug/app-debug.aab
+          name: randa-mkcool-android-release-unsigned-not-for-publishing
+          path: flutter_app/build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
