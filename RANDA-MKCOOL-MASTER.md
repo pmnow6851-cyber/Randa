@@ -1,7 +1,7 @@
 # RANDA.MKCOOL — MASTER SOURCE OF TRUTH
 
 Status: ACTIVE
-Last consolidated: 2026-09-10
+Last consolidated: 2026-09-23
 
 This document is the single operational summary for RANDA.MKCOOL Aim Sync. Detailed specialist documents may remain in the repository for reference, but when instructions conflict, this file and `PROJECT-STATUS.md` govern current operations.
 
@@ -44,7 +44,10 @@ Do not claim guaranteed wins, kills, rank gains or other guaranteed performance.
 - The sensitivity calculation engine remains private in the `calculate-aim-sync` Edge Function.
 - The public front end must never contain private calculation coefficients or the proprietary calculation method.
 - Paid entitlement must come only from server-verified Stripe payment state.
+- Browser return state, local flags and cached profile data must never grant paid entitlement.
+- Web authentication tokens remain session-scoped rather than persistent entitlement state.
 - A fully refunded payment must not retain paid access.
+- The Flutter Android client must use the same authenticated, Stripe-backed paid boundary and must not expose private coefficients in client code.
 
 ## 5. Payment rules
 
@@ -103,11 +106,16 @@ Use the official app URL only in public promotion.
 
 No paid boosts or ad spend unless the owner explicitly changes the no-spend rule.
 
+The Android client is a controlled secondary release surface, not a second product or monetisation path. As of 23 September 2026, the committed Android project is reproducible from `flutter_app/android/`, but public Google Play release remains owner-gated. Do not add a free/ad-supported route, AdMob unlock path or Firebase dependency that bypasses the canonical paid architecture.
+
 ## 9. Security and ownership
 
 - The repository owner retains sole control of production decisions.
 - Keep `main` protected against deletion and force-pushes.
 - Use pull requests for controlled changes.
+- Keep the RANDA Production Audit Gate and CodeQL security checks green before merging protected changes.
+- Keep third-party GitHub Actions pinned to reviewed immutable revisions.
+- Keep repository secret, credential, PII and protected-calculation leak checks enabled.
 - Keep personal/private identity data separate from public RANDA.MKCOOL assets.
 - Never commit passwords, recovery codes, service-role keys, API secrets, private bank details or private addresses.
 - Keep experimental OpenAI/API credentials out of the production app.
