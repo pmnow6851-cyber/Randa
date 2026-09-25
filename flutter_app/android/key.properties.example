@@ -1,0 +1,8 @@
+# TEMPLATE ONLY. Do not put real secrets in Git.
+# Copy this file locally to android/key.properties and replace every placeholder.
+# The real key.properties file and *.jks/*.keystore files are ignored by Git.
+
+storePassword=REPLACE_WITH_OWNER_SECRET
+keyPassword=REPLACE_WITH_OWNER_SECRET
+keyAlias=REPLACE_WITH_OWNER_ALIAS
+storeFile=../upload-keystore.jks
