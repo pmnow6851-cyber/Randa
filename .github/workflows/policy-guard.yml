@@ -1,0 +1,62 @@
+name: RANDA Policy Guard
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'policy/**'
+      - 'feature/**'
+      - 'fix/**'
+      - 'release/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  policy-guard:
+    name: Policy and Secret Boundary Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Require constitution and account registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f RANDA-AI-POLICY.md
+          test -f ACCOUNT-REGISTRY.md
+          grep -q "OWNER CONTROLLED" RANDA-AI-POLICY.md
+          grep -q "PRIVACY FIRST" RANDA-AI-POLICY.md
+          grep -q "ZERO-WASTE" RANDA-AI-POLICY.md
+          grep -q "HUMAN APPROVAL BOUNDARY\|Human Approval Boundary" RANDA-AI-POLICY.md
+          grep -q "Never place passwords" ACCOUNT-REGISTRY.md
+
+      - name: Reject tracked secret-bearing file types
+        shell: bash
+        run: |
+          set -euo pipefail
+          tracked="$(git ls-files | grep -Ei '(^|/)(\.env(\..*)?|key\.properties|signing\.properties|google-services\.json|GoogleService-Info\.plist|service-account[^/]*\.json|firebase-admin[^/]*\.json|[^/]+\.(jks|keystore|p12|pfx|pem|key))$' || true)"
+          if [ -n "$tracked" ]; then
+            echo "Policy violation: tracked secret-bearing file(s) detected."
+            echo "$tracked"
+            exit 1
+          fi
+
+      - name: Reject common private-key material in tracked text
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -nE -- 'BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|AKIA[0-9A-Z]{16}' -- ':!*.lock' ':!*.svg' ':!*.png' ':!*.jpg' ':!*.jpeg'; then
+            echo "Policy violation: possible private key or credential material detected."
+            exit 1
+          fi
+
+      - name: Policy guard passed
+        run: echo "RANDA.MKCOOL policy guard passed."
