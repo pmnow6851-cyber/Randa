@@ -1,6 +1,6 @@
 # RANDA.MKCOOL AIM SYNC SYSTEM — PROJECT STATUS
 
-Last reconciled: **13 September 2026**
+Last reconciled: **23 September 2026**
 
 ## Canonical production app
 
@@ -95,14 +95,25 @@ Integrate the UI only through a reviewed production change. Do not weaken the Ai
 
 ## Android / Google Play role
 
-The Flutter Android client is in the canonical repository and passes the current source/build gates, but it is **not yet approved for public Google Play release**.
+The Flutter Android client is in the canonical repository and is **not yet approved for public Google Play release**.
+
+As of 23 September 2026:
+- the Android project is committed under `flutter_app/android/` rather than generated only inside CI
+- application ID/namespace is locked to `systems.randamkcool.randa_mkcool_aim_sync`
+- minSdk remains 24 and compile/target SDK remains 36
+- Android backup and cleartext traffic are disabled
+- INTERNET permission is present for the authenticated network client
+- CI builds a debug APK and a release AAB validation artifact from committed source and rejects accidental debug signing for release
+- the Android, RANDA Production Audit and CodeQL checks passed on the source change before merge
+- signing keys, Firebase client configuration, bank/payment secrets and payout data remain outside public source
+- Firebase is not required by the current production client and no `google-services.json` dependency is required
+- the dormant AdMob/banner path is removed; there is no free or ad-supported monetisation branch
 
 Keep the GitHub Pages paid PWA canonical until the Android release checklist is complete. Owner-gated release items include:
 - owner-controlled release/upload signing kept outside public GitHub
 - physical-device account, entitlement-restoration, calculator, copy and recovery testing
 - a Google Play-compliant billing/distribution decision
-- AdMob production configuration only after consent/privacy setup is ready
-- privacy policy, account-deletion path and Play disclosures
+- privacy policy, account-deletion path, consent and Play disclosures
 - final signed API-36+ Android App Bundle and deliberate owner approval
 
 ## Base44 role
@@ -146,7 +157,7 @@ OpenAI API is not required by the production Aim Sync architecture. Do not add p
 15. Generated promotional artwork must never be represented as genuine gameplay proof.
 16. New protected features such as Gunsmith must inherit authentication, paid-entitlement and privacy controls rather than creating bypasses.
 
-## Hardening status — 13 September 2026
+## Hardening status — 23 September 2026
 
 Completed:
 - canonical GitHub Pages app retained as the single production front end
@@ -163,13 +174,17 @@ Completed:
 - private calculation endpoint hardened with bounded requests and per-user abuse throttling
 - protected Gunsmith backend confirmed authenticated and pro-gated
 - repository ruleset remains active on `main`: pull requests required, deletion and force-push blocked, linear history required
+- web auth tokens use session-scoped storage and the public client carries a no-referrer policy
+- repository audit rejects tracked secrets, signing/credential files, PII-like literals and protected calculation markers in public client code
+- third-party GitHub Actions are pinned to immutable revisions and CodeQL is aligned on the reviewed v4.38.1 action release
+- the Android project is committed under `flutter_app/android/` and its build/release-validation path passed Android, production-audit and CodeQL checks before merge on 23 September 2026
+- the Android paid-only client contains no Firebase requirement and no AdMob/free-access monetisation path
 - scheduled production and OS audits continue to guard canonical source/deployment drift
 
 Remaining owner-side/provider actions:
 - verify the official app on a physical Samsung Galaxy A56, including sign-in, paid-access restoration, calculation and One-Tap Copy
 - create/protect Android signing material outside GitHub before any Play production build
 - complete Google Play billing/distribution, privacy, deletion, consent and listing gates
-- finish AdMob production app/ad-unit setup only with the required consent/privacy controls
 - review the recently authorised Supabase GitHub OAuth connection and remove it only if it is not intentionally used for developer tooling
 - verify the RANDA business email directly in GitHub account settings if still pending
 - review Google third-party access and revoke no-longer-needed experimental services
