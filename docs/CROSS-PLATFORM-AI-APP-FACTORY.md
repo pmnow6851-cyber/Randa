@@ -105,6 +105,14 @@ Llama compatibility should use an approved server endpoint, hosting partner, or 
 
 "Meta AI compatible" must not be represented as an official Meta partnership or endorsement.
 
+## Apple AI
+
+On supported Apple platforms, native Apple Intelligence / Foundation Models integration may be added through a small Swift bridge from Flutter.
+
+Prefer on-device generation when it satisfies the feature because it can reduce server data exposure and token costs. Always check model availability at runtime and provide a non-AI fallback.
+
+Do not claim Apple Intelligence support until the native iOS implementation has been built and tested on supported hardware.
+
 ## Free-first rule
 
 Building and testing can use free/open-source tooling wherever practical.
