@@ -40,3 +40,32 @@ The Android client follows the same paid-access model as the production system: 
 ## Release rule
 
 Do not replace the canonical live PWA or publish the Android build solely because it compiles. A public release still requires owner-controlled production signing, physical-device testing, payment/unlock testing, store-policy review, privacy disclosures and deliberate owner approval.
+
+
+## Distribution-channel safety
+
+The native client has a compile-time distribution guard so a store build cannot accidentally use the direct Stripe checkout path.
+
+Direct/non-store build:
+
+```bash
+flutter build apk --release --dart-define=RANDA_DISTRIBUTION_CHANNEL=direct
+```
+
+Google Play build:
+
+```bash
+flutter build appbundle --release --dart-define=RANDA_DISTRIBUTION_CHANNEL=google_play
+```
+
+App Store build:
+
+```bash
+flutter build ipa --release --dart-define=RANDA_DISTRIBUTION_CHANNEL=app_store
+```
+
+Google Play and App Store builds deliberately block external Stripe checkout until the approved native store purchase UI is configured and verified server-side.
+
+## AI compatibility rule
+
+Generative AI is optional. When an app needs it, route AI requests through a RANDA.MKCOOL server-side gateway. Do not embed privileged Gemini, Llama-hosting, OpenAI, or other provider keys in Flutter or public web code. See `../docs/CROSS-PLATFORM-AI-APP-FACTORY.md`.
