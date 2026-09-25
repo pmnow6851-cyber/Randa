@@ -7,6 +7,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
+import 'core/distribution_policy.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const RandaAimSyncApp());
@@ -356,6 +358,13 @@ class _AimSyncHomeState extends State<AimSyncHome>
   }
 
   Future<void> _startCheckout() async {
+    if (!RandaDistributionPolicy.externalStripeCheckoutAllowed) {
+      _snack(
+        'This store build uses the platform purchase flow. '
+        'External checkout is disabled for store-policy safety.',
+      );
+      return;
+    }
     if (!_systemOnline) {
       _snack('System check failed. No payment has been taken.');
       return;
