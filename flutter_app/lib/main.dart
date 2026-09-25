@@ -237,7 +237,8 @@ class _AimSyncHomeState extends State<AimSyncHome>
       response = await call();
     }
     if (response.statusCode != 200) return false;
-    final parsed = jsonDecode(response.body);
+    final data = await _decode(response);
+    final parsed = data['data'];
     if (parsed is! List || parsed.isEmpty) return false;
     final row = parsed.first;
     return row is Map && row['tier'] == 'pro' && row['status'] == 'active';
@@ -289,10 +290,13 @@ class _AimSyncHomeState extends State<AimSyncHome>
       );
       final data = await _decode(response);
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(_errorText(data, 'Account creation failed'));
+        throw const _SafeUserException(
+          'Account creation failed. Please try again.',
+        );
       }
       if (data['access_token'] != null) {
         await _saveTokens(data);
+        _password.clear();
         await _restoreSession();
         _snack('Account created. Paid unlock is still required.');
       } else {
@@ -316,9 +320,12 @@ class _AimSyncHomeState extends State<AimSyncHome>
       );
       final data = await _decode(response);
       if (response.statusCode != 200) {
-        throw Exception(_errorText(data, 'Sign-in failed'));
+        throw const _SafeUserException(
+          'Sign-in failed. Check your details and try again.',
+        );
       }
       await _saveTokens(data);
+      _password.clear();
       await _restoreSession();
       _snack(_isPro ? 'Paid access restored.' : 'Signed in. Unlock required.');
     });
@@ -347,11 +354,20 @@ class _AimSyncHomeState extends State<AimSyncHome>
 
   Future<void> _refreshAccessAndMaybeCalculate() async {
     if (!_signedIn) return;
-    final pro = await _checkEntitlement();
-    if (!mounted) return;
-    setState(() => _isPro = pro);
-    if (pro) {
-      await _calculate();
+    try {
+      final pro = await _checkEntitlement();
+      if (!mounted) return;
+      setState(() {
+        _isPro = pro;
+        if (!pro) _result = null;
+      });
+      if (pro) {
+        await _calculate();
+      }
+    } catch (_) {
+      if (mounted) {
+        _snack('Could not refresh access. Please try again.');
+      }
     }
   }
 
@@ -381,7 +397,9 @@ class _AimSyncHomeState extends State<AimSyncHome>
       }
       final data = await _decode(response);
       if (response.statusCode != 200) {
-        throw Exception(_errorText(data, 'Checkout unavailable'));
+        throw const _SafeUserException(
+          'Secure checkout is unavailable right now. Please try again.',
+        );
       }
       if (data['alreadyPro'] == true) {
         if (mounted) setState(() => _isPro = true);
@@ -390,11 +408,20 @@ class _AimSyncHomeState extends State<AimSyncHome>
       }
       final checkout = data['url']?.toString() ?? '';
       final uri = Uri.tryParse(checkout);
-      if (uri == null || uri.scheme != 'https') {
-        throw Exception('Checkout link missing');
+      if (uri == null || !_isAllowedCheckoutUri(uri)) {
+        throw const _SafeUserException(
+          'Secure checkout link could not be verified.',
+        );
       }
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched) throw Exception('Could not open secure checkout');
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        throw const _SafeUserException(
+          'Could not open secure checkout.',
+        );
+      }
       _snack('Complete payment in your browser, then return here.');
     });
   }
@@ -433,11 +460,15 @@ class _AimSyncHomeState extends State<AimSyncHome>
         return;
       }
       if (response.statusCode != 200) {
-        throw Exception(_errorText(data, 'Calculation failed'));
+        throw const _SafeUserException(
+          'Aim Sync could not be generated. Please try again.',
+        );
       }
       if (mounted) setState(() => _result = data);
-    } catch (e) {
-      if (mounted) _snack(_cleanException(e));
+    } catch (_) {
+      if (mounted) {
+        _snack('Aim Sync could not be generated. Please try again.');
+      }
     }
   }
 
@@ -488,29 +519,28 @@ class _AimSyncHomeState extends State<AimSyncHome>
     if (mounted) setState(() => _busy = true);
     try {
       await action();
-    } catch (e) {
-      if (mounted) _snack(_cleanException(e));
+    } on _SafeUserException catch (e) {
+      if (mounted) _snack(e.message);
+    } catch (_) {
+      if (mounted) {
+        _snack('Something went wrong. Please try again.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
-
-  String _errorText(Map<String, dynamic> data, String fallback) {
-    return data['error_description']?.toString() ??
-        data['message']?.toString() ??
-        data['msg']?.toString() ??
-        data['error']?.toString() ??
-        fallback;
-  }
-
-  String _cleanException(Object e) =>
-      e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
 
   void _snack(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  bool _isAllowedCheckoutUri(Uri uri) {
+    if (uri.scheme != 'https') return false;
+    return uri.host == 'checkout.stripe.com' ||
+        uri.host == 'buy.stripe.com';
   }
 
   String _rotationLabel(String value) => switch (value) {
@@ -616,12 +646,16 @@ class _AimSyncHomeState extends State<AimSyncHome>
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
                   autofillHints: const [AutofillHints.email],
+                  autocorrect: false,
+                  enableSuggestions: false,
                   decoration: const InputDecoration(labelText: 'Email'),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: _password,
                   obscureText: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
                   autofillHints: const [AutofillHints.password],
                   decoration: const InputDecoration(labelText: 'Password'),
                 ),
@@ -819,6 +853,11 @@ class _AimSyncHomeState extends State<AimSyncHome>
     setState(setter);
     _scheduleCalculation();
   }
+}
+
+class _SafeUserException implements Exception {
+  final String message;
+  const _SafeUserException(this.message);
 }
 
 class _Panel extends StatelessWidget {
