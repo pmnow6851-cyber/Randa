@@ -72,6 +72,8 @@ class _AimSyncHomeState extends State<AimSyncHome>
       '$_supabaseUrl/functions/v1/create-checkout-session';
   static const _calcUrl = '$_supabaseUrl/functions/v1/calculate-aim-sync';
   static const _healthUrl = '$_supabaseUrl/functions/v1/system-health';
+  static const _deleteAccountUrl =
+      '$_supabaseUrl/functions/v1/delete-my-account';
 
   static const _storage = FlutterSecureStorage();
   static const _accessKey = 'randa_access_token_v1';
@@ -347,6 +349,63 @@ class _AimSyncHomeState extends State<AimSyncHome>
     _snack('Signed out.');
   }
 
+  Future<void> _deleteAccount() async {
+    if (!_signedIn || _accessToken.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This permanently deletes your RANDA.MKCOOL account and associated '
+          'app data. This action cannot be undone. Payment records retained by '
+          'the payment provider may remain where legally required.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('DELETE ACCOUNT'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    await _withBusy(() async {
+      Future<http.Response> call() => http.delete(
+            Uri.parse(_deleteAccountUrl),
+            headers: _headers(authenticated: true),
+          );
+
+      var response = await call();
+      if (response.statusCode == 401 && await _refreshSession()) {
+        response = await call();
+      }
+      final data = await _decode(response);
+      if (response.statusCode != 200 || data['ok'] != true) {
+        throw Exception(_errorText(data, 'Account deletion failed'));
+      }
+
+      await _saveTokens(null);
+      if (!mounted) return;
+      setState(() {
+        _signedIn = false;
+        _isPro = false;
+        _userId = '';
+        _userEmail = '';
+        _result = null;
+      });
+      _email.clear();
+      _password.clear();
+      _snack('Account deleted.');
+    });
+  }
+
   Future<void> _refreshAccessAndMaybeCalculate() async {
     if (!_signedIn) return;
     final pro = await _checkEntitlement();
@@ -619,6 +678,14 @@ class _AimSyncHomeState extends State<AimSyncHome>
                   title: Text(_isPro ? 'PAID ACCESS ACTIVE' : 'SIGNED IN'),
                   subtitle: Text(_userEmail.isEmpty ? 'Account active' : _userEmail),
                   trailing: TextButton(onPressed: _busy ? null : _signOut, child: const Text('SIGN OUT')),
+                ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _busy ? null : _deleteAccount,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('DELETE ACCOUNT'),
+                  ),
                 ),
               ] else ...[
                 TextField(
