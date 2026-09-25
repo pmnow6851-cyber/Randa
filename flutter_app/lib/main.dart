@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+
+import 'app_config.dart';
+import 'screens/sync_result_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,11 +62,10 @@ class AimSyncHome extends StatefulWidget {
 
 class _AimSyncHomeState extends State<AimSyncHome>
     with WidgetsBindingObserver {
-  static const _supabaseUrl = 'https://nnlckidhrsnodjulydpd.supabase.co';
-  static const _supabaseKey =
-      'sb_publishable_0m6qlAuHl3xa1UEhyMtr1Q_Pagypmb9';
+  static const _supabaseUrl = AppConfig.supabaseUrl;
+  static const _supabaseKey = AppConfig.supabasePublishableKey;
   static const _clientHeaderValue = 'mobile';
-  static const _canonicalOrigin = 'https://pmnow6851-cyber.github.io';
+  static const _canonicalOrigin = AppConfig.canonicalOrigin;
 
   static const _checkoutUrl =
       '$_supabaseUrl/functions/v1/create-checkout-session';
@@ -447,40 +448,21 @@ class _AimSyncHomeState extends State<AimSyncHome>
     _calcDebounce = Timer(const Duration(milliseconds: 350), _calculate);
   }
 
-  Future<void> _copyConfig() async {
-    if (!_isPro || _result == null) return;
-    await Clipboard.setData(ClipboardData(text: _configText()));
-    _snack('Complete paid config copied.');
-  }
+  void _openFullResult() {
+    final data = _result;
+    if (!_isPro || data == null) return;
 
-  String _configText() {
-    final result = _result!;
-    final lines = <String>[
-      'RANDA.MKCOOL AIM SYNC CONFIG',
-      'Sync Score: ${result['sync_score']}/100',
-      'Base Sensitivity: ${_base.round()}',
-      'FOV: ${_fov.round()}',
-      'Rotation: ${_rotationLabel(_rotation)}',
-      '',
-    ];
-
-    void add(String title, dynamic rawRows) {
-      if (rawRows is! List) return;
-      lines.add(title);
-      lines.add('SCOPE | CAMERA | FIRING | GYRO');
-      for (final raw in rawRows) {
-        if (raw is! Map) continue;
-        final gyro = raw['gyroscope'];
-        lines.add(
-          '${raw['scope']} | ${raw['camera']} | ${raw['firing']} | ${gyro == 0 ? 'OFF' : gyro}',
-        );
-      }
-      lines.add('');
-    }
-
-    add('MULTIPLAYER', result['multiplayer']);
-    add('BATTLE ROYALE', result['battle_royale']);
-    return lines.join('\n');
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SyncResultScreen(
+          result: Map<String, dynamic>.from(data),
+          baseSensitivity: _base.round(),
+          inputFov: _fov.round(),
+          selectedRotation: _rotation,
+          requestedMode: _mode,
+        ),
+      ),
+    );
   }
 
   Future<void> _withBusy(Future<void> Function() action) async {
@@ -512,12 +494,6 @@ class _AimSyncHomeState extends State<AimSyncHome>
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(message)));
   }
-
-  String _rotationLabel(String value) => switch (value) {
-        'speed' => 'Speed Acceleration',
-        'distance' => 'Distance Acceleration',
-        _ => 'Fixed Speed',
-      };
 
   @override
   Widget build(BuildContext context) {
@@ -783,9 +759,9 @@ class _AimSyncHomeState extends State<AimSyncHome>
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: _copyConfig,
-                    icon: const Icon(Icons.copy_all_outlined),
-                    label: const Text('ONE-TAP COPY CONFIG'),
+                    onPressed: _openFullResult,
+                    icon: const Icon(Icons.visibility_outlined),
+                    label: const Text('VIEW FULL AIM SYNC'),
                   ),
                 ),
               ],
