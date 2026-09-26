@@ -1,6 +1,6 @@
 # RANDA.MKCOOL AIM SYNC SYSTEM — PROJECT STATUS
 
-Last reconciled: **13 September 2026**
+Last reconciled: **26 September 2026**
 
 ## Canonical production app
 
@@ -101,8 +101,7 @@ Keep the GitHub Pages paid PWA canonical until the Android release checklist is 
 - owner-controlled release/upload signing kept outside public GitHub
 - physical-device account, entitlement-restoration, calculator, copy and recovery testing
 - a Google Play-compliant billing/distribution decision
-- AdMob production configuration only after consent/privacy setup is ready
-- privacy policy, account-deletion path and Play disclosures
+- verify the live account-deletion path and complete Play privacy/Data safety disclosures
 - final signed API-36+ Android App Bundle and deliberate owner approval
 
 ## Base44 role
@@ -169,7 +168,6 @@ Remaining owner-side/provider actions:
 - verify the official app on a physical Samsung Galaxy A56, including sign-in, paid-access restoration, calculation and One-Tap Copy
 - create/protect Android signing material outside GitHub before any Play production build
 - complete Google Play billing/distribution, privacy, deletion, consent and listing gates
-- finish AdMob production app/ad-unit setup only with the required consent/privacy controls
 - review the recently authorised Supabase GitHub OAuth connection and remove it only if it is not intentionally used for developer tooling
 - verify the RANDA business email directly in GitHub account settings if still pending
 - review Google third-party access and revoke no-longer-needed experimental services
