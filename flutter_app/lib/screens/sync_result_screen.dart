@@ -9,6 +9,7 @@ class SyncResultScreen extends StatelessWidget {
     required this.inputFov,
     required this.selectedRotation,
     required this.requestedMode,
+    required this.verifyPaidAccess,
   });
 
   final Map<String, dynamic> result;
@@ -16,6 +17,7 @@ class SyncResultScreen extends StatelessWidget {
   final int inputFov;
   final String selectedRotation;
   final String requestedMode;
+  final Future<bool> Function() verifyPaidAccess;
 
   static const _background = Color(0xFF050A0E);
   static const _surface = Color(0xFF0D1A24);
@@ -182,6 +184,21 @@ class SyncResultScreen extends StatelessWidget {
   }
 
   Future<void> _copyToClipboard(BuildContext context) async {
+    bool verified = false;
+    try {
+      verified = await verifyPaidAccess();
+    } catch (_) {}
+    if (!context.mounted) return;
+    if (!verified) {
+      final messenger = ScaffoldMessenger.of(context);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(
+          content: Text('Paid access or configuration could not be verified.'),
+        ));
+      if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+      return;
+    }
     try {
       await Clipboard.setData(
         ClipboardData(text: _copyText()),
