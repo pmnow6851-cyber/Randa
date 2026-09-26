@@ -37,6 +37,10 @@ The CI release AAB is intentionally not a publishable production artifact until 
 
 The Android client follows the same paid-access model as the production system: one verified one-time unlock, with entitlement checked server-side. Do not add advertising, free-user bypasses, alternate checkout providers, or client-side payment secrets to the release build.
 
+Native builds require an explicit `RANDA_DISTRIBUTION_CHANNEL` at build time. The `direct` value enables the existing server-backed Stripe checkout only for an authorized direct distribution build. The `google_play` and `app_store` values, plus missing or unknown values, block external checkout. There is no native store purchase flow yet; do not publish a store build until that flow and server-verified entitlements are complete.
+
+The app links to the official privacy and support page. Signed-in users can request deletion through the protected `delete-my-account` function after confirmation. Sign-out and completed deletion clear local secure-storage tokens and in-memory paid results.
+
 ## Release rule
 
 Do not replace the canonical live PWA or publish the Android build solely because it compiles. A public release still requires owner-controlled production signing, physical-device testing, payment/unlock testing, store-policy review, privacy disclosures and deliberate owner approval.

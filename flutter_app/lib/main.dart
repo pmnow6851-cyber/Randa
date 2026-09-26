@@ -2,10 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+
+import 'app_config.dart';
+import 'core/distribution_policy.dart';
+import 'screens/sync_result_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,16 +63,18 @@ class AimSyncHome extends StatefulWidget {
 
 class _AimSyncHomeState extends State<AimSyncHome>
     with WidgetsBindingObserver {
-  static const _supabaseUrl = 'https://nnlckidhrsnodjulydpd.supabase.co';
-  static const _supabaseKey =
-      'sb_publishable_0m6qlAuHl3xa1UEhyMtr1Q_Pagypmb9';
+  static const _supabaseUrl = AppConfig.supabaseUrl;
+  static const _supabaseKey = AppConfig.supabasePublishableKey;
   static const _clientHeaderValue = 'mobile';
-  static const _canonicalOrigin = 'https://pmnow6851-cyber.github.io';
+  static const _canonicalOrigin = AppConfig.canonicalOrigin;
 
   static const _checkoutUrl =
       '$_supabaseUrl/functions/v1/create-checkout-session';
   static const _calcUrl = '$_supabaseUrl/functions/v1/calculate-aim-sync';
   static const _healthUrl = '$_supabaseUrl/functions/v1/system-health';
+  static const _deleteAccountUrl =
+      '$_supabaseUrl/functions/v1/delete-my-account';
+  static const _supportUrl = '$_canonicalOrigin/Randa/support.html';
 
   static const _storage = FlutterSecureStorage();
   static const _accessKey = 'randa_access_token_v1';
@@ -99,6 +104,9 @@ class _AimSyncHomeState extends State<AimSyncHome>
 
   Map<String, dynamic>? _result;
   Timer? _calcDebounce;
+  int _calcEpoch = 0;
+  int _sessionEpoch = 0;
+  bool _calculating = false;
 
   @override
   void initState() {
@@ -237,17 +245,33 @@ class _AimSyncHomeState extends State<AimSyncHome>
       response = await call();
     }
     if (response.statusCode != 200) return false;
-    final parsed = jsonDecode(response.body);
+    final data = await _decode(response);
+    final parsed = data['data'];
     if (parsed is! List || parsed.isEmpty) return false;
     final row = parsed.first;
     return row is Map && row['tier'] == 'pro' && row['status'] == 'active';
   }
 
   Future<void> _restoreSession() async {
+    final sessionEpoch = ++_sessionEpoch;
+    _calcDebounce?.cancel();
+    _calcEpoch++;
+    if (mounted) {
+      setState(() {
+        _signedIn = false;
+        _isPro = false;
+        _userId = '';
+        _userEmail = '';
+        _result = null;
+        _calculating = false;
+      });
+    }
     try {
       final user = await _getUser();
+      if (!mounted || sessionEpoch != _sessionEpoch) return;
       if (user == null || user['id'] == null) {
         await _saveTokens(null);
+        if (!mounted || sessionEpoch != _sessionEpoch) return;
         if (mounted) {
           setState(() {
             _signedIn = false;
@@ -255,6 +279,7 @@ class _AimSyncHomeState extends State<AimSyncHome>
             _userId = '';
             _userEmail = '';
             _result = null;
+            _calculating = false;
           });
         }
         return;
@@ -262,15 +287,19 @@ class _AimSyncHomeState extends State<AimSyncHome>
       _userId = user['id'].toString();
       _userEmail = user['email']?.toString() ?? '';
       final pro = await _checkEntitlement();
+      if (!mounted || sessionEpoch != _sessionEpoch) return;
       if (mounted) {
         setState(() {
           _signedIn = true;
           _isPro = pro;
+          _result = null;
         });
       }
       if (pro) await _calculate();
     } catch (_) {
-      if (mounted) _snack('Could not restore the account session.');
+      if (mounted && sessionEpoch == _sessionEpoch) {
+        _snack('Could not restore the account session.');
+      }
     }
   }
 
@@ -289,13 +318,17 @@ class _AimSyncHomeState extends State<AimSyncHome>
       );
       final data = await _decode(response);
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception(_errorText(data, 'Account creation failed'));
+        throw const _SafeUserException(
+          'Account creation failed. Please try again.',
+        );
       }
       if (data['access_token'] != null) {
         await _saveTokens(data);
+        _password.clear();
         await _restoreSession();
         _snack('Account created. Paid unlock is still required.');
       } else {
+        _password.clear();
         _snack('Account created. Confirm your email, then sign in.');
       }
     });
@@ -316,46 +349,160 @@ class _AimSyncHomeState extends State<AimSyncHome>
       );
       final data = await _decode(response);
       if (response.statusCode != 200) {
-        throw Exception(_errorText(data, 'Sign-in failed'));
+        throw const _SafeUserException(
+          'Sign-in failed. Check your details and try again.',
+        );
       }
       await _saveTokens(data);
+      _password.clear();
       await _restoreSession();
       _snack(_isPro ? 'Paid access restored.' : 'Signed in. Unlock required.');
     });
   }
 
   Future<void> _signOut() async {
+    _sessionEpoch++;
+    _calcDebounce?.cancel();
+    _calcEpoch++;
+    final logoutHeaders = _headers(authenticated: true);
+    final hadSession = _accessToken.isNotEmpty;
+    _email.clear();
+    _password.clear();
+    if (mounted) {
+      setState(() {
+        _signedIn = false;
+        _isPro = false;
+        _userId = '';
+        _userEmail = '';
+        _result = null;
+        _calculating = false;
+      });
+    }
     try {
-      if (_accessToken.isNotEmpty) {
+      await _saveTokens(null);
+    } catch (_) {
+      _snack('Could not clear local tokens. Clear this app’s data.');
+      return;
+    }
+    try {
+      if (hadSession) {
         await http.post(
           Uri.parse('$_supabaseUrl/auth/v1/logout'),
-          headers: _headers(authenticated: true),
-        );
+          headers: logoutHeaders,
+        ).timeout(const Duration(seconds: 5));
       }
     } catch (_) {}
-    await _saveTokens(null);
-    if (!mounted) return;
-    setState(() {
-      _signedIn = false;
-      _isPro = false;
-      _userId = '';
-      _userEmail = '';
-      _result = null;
-    });
     _snack('Signed out.');
+  }
+
+  Future<void> _deleteAccount() async {
+    if (!_signedIn || _accessToken.isEmpty || _busy) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This permanently deletes your RANDA.MKCOOL account and app data. '
+          'You will lose paid access. Payment providers may retain records '
+          'where legally required. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('DELETE ACCOUNT'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await _withBusy(() async {
+      Future<http.Response> call() => http.delete(
+            Uri.parse(_deleteAccountUrl),
+            headers: _headers(authenticated: true),
+          );
+      var response = await call();
+      if (response.statusCode == 401 && await _refreshSession()) {
+        response = await call();
+      }
+      final data = await _decode(response);
+      if (response.statusCode != 200 || data['ok'] != true) {
+        throw const _SafeUserException(
+          'Account deletion failed. Please try again or contact support.',
+        );
+      }
+
+      _sessionEpoch++;
+      _calcDebounce?.cancel();
+      _calcEpoch++;
+      _email.clear();
+      _password.clear();
+      if (mounted) {
+        setState(() {
+          _signedIn = false;
+          _isPro = false;
+          _userId = '';
+          _userEmail = '';
+          _result = null;
+          _calculating = false;
+        });
+      }
+      try {
+        await _saveTokens(null);
+        _snack('Account deleted.');
+      } catch (_) {
+        _snack('Account deleted. Clear this app’s data to remove local tokens.');
+      }
+    });
+  }
+
+  Future<void> _openSupport() async {
+    try {
+      if (!await launchUrl(
+        Uri.parse(_supportUrl),
+        mode: LaunchMode.externalApplication,
+      )) {
+        _snack('Could not open privacy and support information.');
+      }
+    } catch (_) {
+      _snack('Could not open privacy and support information.');
+    }
   }
 
   Future<void> _refreshAccessAndMaybeCalculate() async {
     if (!_signedIn) return;
-    final pro = await _checkEntitlement();
-    if (!mounted) return;
-    setState(() => _isPro = pro);
-    if (pro) {
-      await _calculate();
+    final sessionEpoch = _sessionEpoch;
+    try {
+      final pro = await _checkEntitlement();
+      if (!mounted || sessionEpoch != _sessionEpoch) return;
+      setState(() {
+        _isPro = pro;
+        if (!pro) {
+          _calcDebounce?.cancel();
+          _calcEpoch++;
+          _result = null;
+          _calculating = false;
+        }
+      });
+      if (pro) {
+        await _calculate();
+      }
+    } catch (_) {
+      if (mounted) {
+        _snack('Could not refresh access. Please try again.');
+      }
     }
   }
 
   Future<void> _startCheckout() async {
+    if (!RandaDistributionPolicy.externalStripeCheckoutAllowed) {
+      _snack('Purchases are unavailable in this build.');
+      return;
+    }
     if (!_systemOnline) {
       _snack('System check failed. No payment has been taken.');
       return;
@@ -381,7 +528,9 @@ class _AimSyncHomeState extends State<AimSyncHome>
       }
       final data = await _decode(response);
       if (response.statusCode != 200) {
-        throw Exception(_errorText(data, 'Checkout unavailable'));
+        throw const _SafeUserException(
+          'Secure checkout is unavailable right now. Please try again.',
+        );
       }
       if (data['alreadyPro'] == true) {
         if (mounted) setState(() => _isPro = true);
@@ -390,11 +539,20 @@ class _AimSyncHomeState extends State<AimSyncHome>
       }
       final checkout = data['url']?.toString() ?? '';
       final uri = Uri.tryParse(checkout);
-      if (uri == null || uri.scheme != 'https') {
-        throw Exception('Checkout link missing');
+      if (uri == null || !_isAllowedCheckoutUri(uri)) {
+        throw const _SafeUserException(
+          'Secure checkout link could not be verified.',
+        );
       }
-      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!launched) throw Exception('Could not open secure checkout');
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        throw const _SafeUserException(
+          'Could not open secure checkout.',
+        );
+      }
       _snack('Complete payment in your browser, then return here.');
     });
   }
@@ -411,76 +569,78 @@ class _AimSyncHomeState extends State<AimSyncHome>
 
   Future<void> _calculate() async {
     if (!_isPro || _accessToken.isEmpty) return;
+    final epoch = ++_calcEpoch;
+    final payload = _payload();
+    if (mounted) {
+      setState(() {
+        _result = null;
+        _calculating = true;
+      });
+    }
     try {
       Future<http.Response> call() => http.post(
             Uri.parse(_calcUrl),
             headers: _headers(authenticated: true),
-            body: jsonEncode(_payload()),
+            body: jsonEncode(payload),
           );
       var response = await call();
       if (response.statusCode == 401 && await _refreshSession()) {
         response = await call();
       }
       final data = await _decode(response);
+      if (!mounted || epoch != _calcEpoch) return;
       if (response.statusCode == 402) {
-        if (mounted) {
-          setState(() {
-            _isPro = false;
-            _result = null;
-          });
-        }
+        setState(() {
+          _isPro = false;
+          _result = null;
+          _calculating = false;
+        });
         _snack('Paid access is not active.');
         return;
       }
       if (response.statusCode != 200) {
-        throw Exception(_errorText(data, 'Calculation failed'));
+        throw const _SafeUserException(
+          'Aim Sync could not be generated. Please try again.',
+        );
       }
-      if (mounted) setState(() => _result = data);
-    } catch (e) {
-      if (mounted) _snack(_cleanException(e));
+      setState(() {
+        _result = data;
+        _calculating = false;
+      });
+    } catch (_) {
+      if (mounted && epoch == _calcEpoch) {
+        setState(() => _calculating = false);
+        _snack('Aim Sync could not be generated. Please try again.');
+      }
     }
   }
 
   void _scheduleCalculation() {
     if (!_isPro) return;
+    _calcEpoch++;
     _calcDebounce?.cancel();
+    setState(() {
+      _result = null;
+      _calculating = true;
+    });
     _calcDebounce = Timer(const Duration(milliseconds: 350), _calculate);
   }
 
-  Future<void> _copyConfig() async {
-    if (!_isPro || _result == null) return;
-    await Clipboard.setData(ClipboardData(text: _configText()));
-    _snack('Complete paid config copied.');
-  }
+  void _openFullResult() {
+    final data = _result;
+    if (!_isPro || data == null) return;
 
-  String _configText() {
-    final result = _result!;
-    final lines = <String>[
-      'RANDA.MKCOOL AIM SYNC CONFIG',
-      'Sync Score: ${result['sync_score']}/100',
-      'Base Sensitivity: ${_base.round()}',
-      'FOV: ${_fov.round()}',
-      'Rotation: ${_rotationLabel(_rotation)}',
-      '',
-    ];
-
-    void add(String title, dynamic rawRows) {
-      if (rawRows is! List) return;
-      lines.add(title);
-      lines.add('SCOPE | CAMERA | FIRING | GYRO');
-      for (final raw in rawRows) {
-        if (raw is! Map) continue;
-        final gyro = raw['gyroscope'];
-        lines.add(
-          '${raw['scope']} | ${raw['camera']} | ${raw['firing']} | ${gyro == 0 ? 'OFF' : gyro}',
-        );
-      }
-      lines.add('');
-    }
-
-    add('MULTIPLAYER', result['multiplayer']);
-    add('BATTLE ROYALE', result['battle_royale']);
-    return lines.join('\n');
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SyncResultScreen(
+          result: Map<String, dynamic>.from(data),
+          baseSensitivity: _base.round(),
+          inputFov: _fov.round(),
+          selectedRotation: _rotation,
+          requestedMode: _mode,
+        ),
+      ),
+    );
   }
 
   Future<void> _withBusy(Future<void> Function() action) async {
@@ -488,23 +648,16 @@ class _AimSyncHomeState extends State<AimSyncHome>
     if (mounted) setState(() => _busy = true);
     try {
       await action();
-    } catch (e) {
-      if (mounted) _snack(_cleanException(e));
+    } on _SafeUserException catch (e) {
+      if (mounted) _snack(e.message);
+    } catch (_) {
+      if (mounted) {
+        _snack('Something went wrong. Please try again.');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
-
-  String _errorText(Map<String, dynamic> data, String fallback) {
-    return data['error_description']?.toString() ??
-        data['message']?.toString() ??
-        data['msg']?.toString() ??
-        data['error']?.toString() ??
-        fallback;
-  }
-
-  String _cleanException(Object e) =>
-      e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
 
   void _snack(String message) {
     if (!mounted) return;
@@ -513,11 +666,13 @@ class _AimSyncHomeState extends State<AimSyncHome>
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  String _rotationLabel(String value) => switch (value) {
-        'speed' => 'Speed Acceleration',
-        'distance' => 'Distance Acceleration',
-        _ => 'Fixed Speed',
-      };
+  bool _isAllowedCheckoutUri(Uri uri) {
+    if (uri.scheme != 'https' || uri.userInfo.isNotEmpty || uri.port != 443) {
+      return false;
+    }
+    return uri.host == 'checkout.stripe.com' ||
+        uri.host == 'buy.stripe.com';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -551,7 +706,10 @@ class _AimSyncHomeState extends State<AimSyncHome>
             _accountCard(),
             const SizedBox(height: 14),
             if (!_isPro) ...[
-              _unlockCard(),
+              if (RandaDistributionPolicy.externalStripeCheckoutAllowed)
+                _unlockCard()
+              else
+                _storeAvailabilityCard(),
               const SizedBox(height: 14),
             ],
             if (_checkingAccess)
@@ -611,17 +769,29 @@ class _AimSyncHomeState extends State<AimSyncHome>
                   subtitle: Text(_userEmail.isEmpty ? 'Account active' : _userEmail),
                   trailing: TextButton(onPressed: _busy ? null : _signOut, child: const Text('SIGN OUT')),
                 ),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _busy ? null : _deleteAccount,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('DELETE ACCOUNT'),
+                  ),
+                ),
               ] else ...[
                 TextField(
                   controller: _email,
                   keyboardType: TextInputType.emailAddress,
                   autofillHints: const [AutofillHints.email],
+                  autocorrect: false,
+                  enableSuggestions: false,
                   decoration: const InputDecoration(labelText: 'Email'),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: _password,
                   obscureText: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
                   autofillHints: const [AutofillHints.password],
                   decoration: const InputDecoration(labelText: 'Password'),
                 ),
@@ -644,7 +814,24 @@ class _AimSyncHomeState extends State<AimSyncHome>
                   ],
                 ),
               ],
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _openSupport,
+                icon: const Icon(Icons.privacy_tip_outlined),
+                label: const Text('PRIVACY, TERMS & SUPPORT'),
+              ),
             ],
+          ),
+        ),
+      );
+
+  Widget _storeAvailabilityCard() => const _Panel(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text(
+            'Purchases are unavailable in this build. Existing paid access '
+            'can be restored by signing in. See Privacy, Terms & Support '
+            'for account help.',
           ),
         ),
       );
@@ -699,7 +886,8 @@ class _AimSyncHomeState extends State<AimSyncHome>
                 style: TextStyle(color: Color(0xFF8AA3B0)),
               ),
               const SizedBox(height: 14),
-              FilledButton(onPressed: _busy ? null : _startCheckout, child: const Text('UNLOCK • £9.99')),
+              if (RandaDistributionPolicy.externalStripeCheckoutAllowed)
+                FilledButton(onPressed: _busy ? null : _startCheckout, child: const Text('UNLOCK • £9.99')),
             ],
           ),
         ),
@@ -767,8 +955,15 @@ class _AimSyncHomeState extends State<AimSyncHome>
                 onChanged: (v) => _setAndRecalc(() => _gyro = v),
               ),
               const SizedBox(height: 12),
-              if (_result == null)
+              if (_result == null && _calculating)
                 const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
+              else if (_result == null)
+                Center(
+                  child: TextButton(
+                    onPressed: _calculate,
+                    child: const Text('GENERATE AIM SYNC'),
+                  ),
+                )
               else ...[
                 Text(
                   'SYNC SCORE ${_result!['sync_score']} / 100',
@@ -783,9 +978,9 @@ class _AimSyncHomeState extends State<AimSyncHome>
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: _copyConfig,
-                    icon: const Icon(Icons.copy_all_outlined),
-                    label: const Text('ONE-TAP COPY CONFIG'),
+                    onPressed: _openFullResult,
+                    icon: const Icon(Icons.visibility_outlined),
+                    label: const Text('VIEW FULL AIM SYNC'),
                   ),
                 ),
               ],
@@ -819,6 +1014,11 @@ class _AimSyncHomeState extends State<AimSyncHome>
     setState(setter);
     _scheduleCalculation();
   }
+}
+
+class _SafeUserException implements Exception {
+  final String message;
+  const _SafeUserException(this.message);
 }
 
 class _Panel extends StatelessWidget {
