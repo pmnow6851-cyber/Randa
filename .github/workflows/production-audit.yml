@@ -93,8 +93,8 @@ jobs:
             exit 1;
           }
 
-          grep -Fq 'randa-aim-sync-v5-paid-' service-worker.js || {
-            echo "v5 paid cache namespace not found";
+          grep -Fq 'randa-aim-sync-v6-paid-' service-worker.js || {
+            echo "v6 paid cache namespace not found";
             exit 1;
           }
 
