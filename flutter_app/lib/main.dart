@@ -364,24 +364,34 @@ class _AimSyncHomeState extends State<AimSyncHome>
     _sessionEpoch++;
     _calcDebounce?.cancel();
     _calcEpoch++;
+    final logoutHeaders = _headers(authenticated: true);
+    final hadSession = _accessToken.isNotEmpty;
+    _email.clear();
+    _password.clear();
+    if (mounted) {
+      setState(() {
+        _signedIn = false;
+        _isPro = false;
+        _userId = '';
+        _userEmail = '';
+        _result = null;
+        _calculating = false;
+      });
+    }
     try {
-      if (_accessToken.isNotEmpty) {
+      await _saveTokens(null);
+    } catch (_) {
+      _snack('Could not clear local tokens. Clear this app’s data.');
+      return;
+    }
+    try {
+      if (hadSession) {
         await http.post(
           Uri.parse('$_supabaseUrl/auth/v1/logout'),
-          headers: _headers(authenticated: true),
-        );
+          headers: logoutHeaders,
+        ).timeout(const Duration(seconds: 5));
       }
     } catch (_) {}
-    await _saveTokens(null);
-    if (!mounted) return;
-    setState(() {
-      _signedIn = false;
-      _isPro = false;
-      _userId = '';
-      _userEmail = '';
-      _result = null;
-      _calculating = false;
-    });
     _snack('Signed out.');
   }
 
@@ -441,8 +451,12 @@ class _AimSyncHomeState extends State<AimSyncHome>
           _calculating = false;
         });
       }
-      await _saveTokens(null);
-      _snack('Account deleted.');
+      try {
+        await _saveTokens(null);
+        _snack('Account deleted.');
+      } catch (_) {
+        _snack('Account deleted. Clear this app’s data to remove local tokens.');
+      }
     });
   }
 
