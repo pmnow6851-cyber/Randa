@@ -8,17 +8,17 @@ This checklist applies only to the Flutter Android client. It must not alter the
 
 The current project rule is **£0 discretionary outbound spend**.
 
-As verified against current Google documentation on 13 September 2026:
-- full/wide Android distribution requires a one-time **US$25 registration fee**
-- Google also offers a **no-fee limited-distribution** option capped at 20 devices
-- connected business mail contains Play Console email-verification messages but no developer-registration-fee receipt proving that a full-distribution account has already been paid
+As verified against Google's documentation on 26 September 2026:
+- a [Play Console developer account](https://support.google.com/googleplay/android-developer/answer/6112435?hl=en) requires a one-time **US$25 registration fee** if a suitable account does not already exist
+- [Android Developer Console limited distribution](https://developer.android.com/developer-verification/guides/limited-distribution) is free and permits sharing with up to 20 authorised devices **outside Google Play**; Google describes it for students and hobbyists, so do not assume it fits this commercial paid product
+- prior business email verification does not establish whether a Play developer account is paid and eligible
 
 Therefore:
 - do **not** pay a developer registration fee automatically
 - keep the GitHub Pages/PWA product as the canonical public customer route
-- use free local/direct testing or a no-fee limited-distribution route where appropriate
-- public/wide Play distribution remains blocked unless the owner explicitly changes the money rule or verifies that an eligible full-distribution developer account has already been paid
-- never treat Play Console email verification alone as proof that full distribution is purchased or approved
+- use free local/direct device testing; consider limited distribution only if the provider's account eligibility and device limits genuinely fit
+- public Play distribution remains blocked unless the owner confirms an eligible existing Play developer account or explicitly changes the zero-spend rule
+- never treat Play Console email verification alone as proof of registration or release approval
 
 ## Already verified
 
@@ -44,7 +44,7 @@ Before any public/wide Play distribution:
 - verify whether the owner already has a paid/eligible full-distribution developer account; or
 - obtain explicit owner approval before incurring the one-time registration fee.
 
-Under the current zero-spend rule, do not pay the registration fee. Limited distribution may be used only within its current provider limits and should not be represented as a public store launch.
+Under the current zero-spend rule, do not pay the registration fee. Android Developer Console limited distribution is outside Play and must not be represented as a public store launch or assumed suitable for this paid product.
 
 ### 2. Release signing
 
