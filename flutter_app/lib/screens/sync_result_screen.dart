@@ -24,12 +24,6 @@ class SyncResultScreen extends StatelessWidget {
   static const _cyan = Color(0xFF00E5FF);
   static const _muted = Color(0xFF8AA3B0);
 
-  String _rotationLabel(String value) => switch (value) {
-        'speed' => 'Speed Acceleration',
-        'distance' => 'Distance Acceleration',
-        _ => 'Fixed Speed',
-      };
-
   Map<String, dynamic>? _map(dynamic value) {
     if (value is Map<String, dynamic>) return value;
     if (value is Map) {
