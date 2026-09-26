@@ -8,7 +8,7 @@ CODM Aim Sync Optimizer
 
 ## Short description
 
-CODM Sensitivity, Aim Optimizer & Pro Player Layouts for smoother aim control.
+CODM sensitivity profiles for MP and BR, with gyroscope and FOV setup.
 
 ## Long description
 
@@ -30,7 +30,7 @@ FOR CODM PLAYERS WHO WANT CONSISTENCY
 
 If you keep changing sensitivity after every bad match, Aim Sync gives you a structured profile to work from instead of another random reset. Use the generated configuration as a controlled starting point, test it in training, and make deliberate changes rather than chasing settings.
 
-Players researching CODM Sensitivity, Aim Optimizer tools, sensitivity calculators, FOV tuning, gyro setup, and Pro Player Layouts can use Aim Sync as a focused control companion for building a repeatable setup.
+Players researching CODM sensitivity, aim setup, FOV tuning, and gyro settings can use Aim Sync as a focused companion for building a repeatable profile.
 
 PRIVACY & ACCESS
 
