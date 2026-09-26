@@ -1,4 +1,4 @@
-const CACHE_NAME = 'randa-aim-sync-v5-paid-20260909-recovery';
+const CACHE_NAME = 'randa-aim-sync-v6-paid-20260926-privacy';
 const APP_SHELL = [
   './',
   './index.html',
