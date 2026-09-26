@@ -104,15 +104,11 @@ class SyncResultScreen extends StatelessWidget {
     return [
       _ResultSection(
         'ROTATION',
-        rotation.isNotEmpty
-            ? rotation
-            : [_ResultEntry('Selected Mode', _rotationLabel(selectedRotation))],
+        rotation,
       ),
       _ResultSection(
         'FOV',
-        fov.isNotEmpty
-            ? fov
-            : [_ResultEntry('Input FOV', inputFov.toString())],
+        fov,
       ),
       if (freeView.isNotEmpty)
         _ResultSection('FREE VIEW SENSITIVITY', freeView),
@@ -139,15 +135,9 @@ class SyncResultScreen extends StatelessWidget {
     ];
   }
 
-  bool get _showMp =>
-      requestedMode == 'mp' ||
-      requestedMode == 'both' ||
-      result['multiplayer'] is List;
+  bool get _showMp => requestedMode == 'mp' || requestedMode == 'both';
 
-  bool get _showBr =>
-      requestedMode == 'br' ||
-      requestedMode == 'both' ||
-      result['battle_royale'] is List;
+  bool get _showBr => requestedMode == 'br' || requestedMode == 'both';
 
   String _copyText() {
     final buffer = StringBuffer()
