@@ -567,6 +567,44 @@ class _AimSyncHomeState extends State<AimSyncHome>
         'gyro': _gyro,
       };
 
+  bool _hasVerifiedMatrix(Map<String, dynamic> data, String mode) {
+    bool validEntries(dynamic rows) =>
+        rows is List &&
+        rows.isNotEmpty &&
+        rows.every((row) =>
+            row is Map &&
+            (row['label'] ?? row['scope'] ?? row['name']) is String &&
+            (row['label'] ?? row['scope'] ?? row['name']).toString().trim().isNotEmpty &&
+            row['value'] is num);
+
+    bool validLegacy(dynamic rows) =>
+        rows is List &&
+        rows.isNotEmpty &&
+        rows.every((row) =>
+            row is Map &&
+            row['scope'] is String &&
+            row['scope'].toString().trim().isNotEmpty &&
+            row['camera'] is num &&
+            row['firing'] is num &&
+            row['gyroscope'] is num);
+
+    bool validMode(String key, String legacyKey) {
+      final full = data['full_config'];
+      final config = full is Map ? full[key] : null;
+      if (config is Map &&
+          validEntries(config['camera']) &&
+          validEntries(config['firing']) &&
+          validEntries(config['gyroscope'])) {
+        return true;
+      }
+      return validLegacy(data[legacyKey]);
+    }
+
+    return (mode == 'mp' || mode == 'br' || mode == 'both') &&
+        (mode == 'br' || validMode('multiplayer', 'multiplayer')) &&
+        (mode == 'mp' || validMode('battle_royale', 'battle_royale'));
+  }
+
   Future<void> _calculate() async {
     if (!_isPro || _accessToken.isEmpty) return;
     final epoch = ++_calcEpoch;
@@ -601,6 +639,11 @@ class _AimSyncHomeState extends State<AimSyncHome>
       if (response.statusCode != 200) {
         throw const _SafeUserException(
           'Aim Sync could not be generated. Please try again.',
+        );
+      }
+      if (!_hasVerifiedMatrix(data, payload['mode'] as String)) {
+        throw const _SafeUserException(
+          'Verified configuration is incomplete. Please try again later.',
         );
       }
       setState(() {
