@@ -1,6 +1,6 @@
 # RANDA.MKCOOL AIM SYNC — CANONICAL AI HANDOFF
 
-Last reconciled: **2026-09-13**
+Last reconciled: **2026-09-26**
 
 This file exists to stop ChatGPT, Gemini, Grok, builders, and other assistants from drifting into different versions of the project.
 
@@ -79,7 +79,7 @@ Integrate Gunsmith only through reviewed changes that preserve the existing auth
 
 The Flutter Android client is official source but **not yet a public Google Play production release**.
 
-Do not publish an Android build merely because a debug APK/AAB compiles. Before public Play distribution, require the release gates in `docs/ANDROID-PLAY-RELEASE-GATE.md`, including owner-controlled signing, physical-device testing, compliant billing/distribution choice, privacy/account deletion, AdMob consent/setup and final signed API-36+ AAB review.
+Do not publish an Android build merely because a debug APK/AAB compiles. Before public Play distribution, require the release gates in `docs/ANDROID-PLAY-RELEASE-GATE.md`, including owner-controlled signing, physical-device testing, compliant store billing/distribution, privacy/account deletion, and final signed API-36+ AAB review. The Play-channel build blocks external Stripe checkout; a native store purchase flow has not been implemented. The paid-only release has no advertising or AdMob setup requirement.
 
 Keep the GitHub Pages app and £9.99 web route canonical until those gates are deliberately approved.
 
@@ -136,7 +136,6 @@ These must not be silently performed by an assistant when they affect credential
 - physically test the official app and Android client on the owner device
 - create/protect Android signing material outside public GitHub
 - finish Google Play billing/distribution and privacy/account-deletion gates
-- complete AdMob production configuration only after consent/privacy controls are ready
 - review the recently authorised Supabase OAuth connection in GitHub and remove it only if it is not intentionally used for developer tooling
 - verify the RANDA business email in GitHub account settings if still pending
 - revoke any unused experimental API credentials directly in their provider account

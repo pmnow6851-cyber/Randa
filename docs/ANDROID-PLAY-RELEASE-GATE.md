@@ -8,17 +8,17 @@ This checklist applies only to the Flutter Android client. It must not alter the
 
 The current project rule is **£0 discretionary outbound spend**.
 
-As verified against current Google documentation on 13 September 2026:
-- full/wide Android distribution requires a one-time **US$25 registration fee**
-- Google also offers a **no-fee limited-distribution** option capped at 20 devices
-- connected business mail contains Play Console email-verification messages but no developer-registration-fee receipt proving that a full-distribution account has already been paid
+As verified against Google's documentation on 26 September 2026:
+- a [Play Console developer account](https://support.google.com/googleplay/android-developer/answer/6112435?hl=en) requires a one-time **US$25 registration fee** if a suitable account does not already exist
+- [Android Developer Console limited distribution](https://developer.android.com/developer-verification/guides/limited-distribution) is free and permits sharing with up to 20 authorised devices **outside Google Play**; Google describes it for students and hobbyists, so do not assume it fits this commercial paid product
+- prior business email verification does not establish whether a Play developer account is paid and eligible
 
 Therefore:
 - do **not** pay a developer registration fee automatically
 - keep the GitHub Pages/PWA product as the canonical public customer route
-- use free local/direct testing or a no-fee limited-distribution route where appropriate
-- public/wide Play distribution remains blocked unless the owner explicitly changes the money rule or verifies that an eligible full-distribution developer account has already been paid
-- never treat Play Console email verification alone as proof that full distribution is purchased or approved
+- use free local/direct device testing; consider limited distribution only if the provider's account eligibility and device limits genuinely fit
+- public Play distribution remains blocked unless the owner confirms an eligible existing Play developer account or explicitly changes the zero-spend rule
+- never treat Play Console email verification alone as proof of registration or release approval
 
 ## Already verified
 
@@ -26,9 +26,10 @@ Therefore:
 - Flutter static analysis passes in CI.
 - Android debug APK builds in CI.
 - Minimum Android SDK is 24.
-- Android app backup is disabled in the generated wrapper.
+- Android app backup is disabled in the committed Android wrapper.
 - Session tokens use secure storage.
 - Supabase authentication and paid-entitlement restoration remain server-backed.
+- The Flutter and PWA clients now provide an account-deletion request path, with a public deletion page.
 - Sensitivity calculation coefficients remain outside the public Flutter client.
 - The GitHub Pages paid PWA remains the canonical live customer app.
 - The production offer remains one £9.99 GBP one-time payment route.
@@ -43,7 +44,7 @@ Before any public/wide Play distribution:
 - verify whether the owner already has a paid/eligible full-distribution developer account; or
 - obtain explicit owner approval before incurring the one-time registration fee.
 
-Under the current zero-spend rule, do not pay the registration fee. Limited distribution may be used only within its current provider limits and should not be represented as a public store launch.
+Under the current zero-spend rule, do not pay the registration fee. Android Developer Console limited distribution is outside Play and must not be represented as a public store launch or assumed suitable for this paid product.
 
 ### 2. Release signing
 
@@ -62,7 +63,7 @@ Test the release candidate on a physical Android device, including:
 - MP and BR output rendering
 - One-Tap Copy Config
 - network loss and recovery
-- cancelled checkout/payment-return behaviour outside any Play consumption-only build
+- cancelled purchase and entitlement restoration in the approved distribution channel; verify the direct Stripe return only in a direct-distribution build
 
 Do not change production price, payout routing, entitlement policy, or calculation logic merely to make a test pass.
 
@@ -72,33 +73,27 @@ Before uploading a public Play build, choose and document one compliant path for
 
 Do not silently replace or duplicate the canonical £9.99 web payment route. Do not assume an external purchase CTA is Play-compliant merely because it works technically; re-check the current Google Play Payments policy before public distribution.
 
-### 5. AdMob production setup
+### 5. Privacy and data handling
 
-The current Flutter app contains an **AdMob placeholder only** and does not yet include production ad-serving integration.
+Publish and verify an app-specific privacy policy covering account/authentication data, Supabase processing, the web Stripe payment route, any approved store billing route, retention, user rights, and a business support contact. Ensure the Data safety form reflects the actual Android build and its SDKs.
 
-Owner must create/confirm the AdMob app and production ad units, complete any required identity/payment verification, and keep bank/payment profile information inside Google only. Development must use test ads until production IDs and consent configuration are ready.
+The paid-only release has no advertising or AdMob requirement. Do not create production ad units for this release.
 
-### 6. Privacy and consent
-
-Before personalised ads are served in the UK/EEA/Switzerland, configure a Google-certified CMP/TCF-compatible consent flow and provide a privacy-options path where required.
-
-Publish an app-specific privacy policy covering at minimum account/authentication data, Supabase processing, Stripe/payment processing, AdMob advertising data, retention, user rights, and contact details.
-
-### 7. Account deletion
+### 6. Account deletion
 
 Because the app can create user accounts, provide:
 
 - a readily discoverable in-app path to request account deletion; and
-- an external web resource for deletion requests, entered in Play Console.
+- an external web resource for deletion requests, entered in Play Console (the published `/Randa/delete-account.html` page).
 
 Deletion handling must remove the account and associated user data except data that must legally or operationally be retained, with any retention disclosed in the privacy policy.
 
-### 8. Play Console disclosures
+### 7. Play Console disclosures
 
 Complete and verify:
 
 - Data safety
-- Contains ads
+- Contains ads: declare **No** for the ad-free release build, and verify the submitted binary matches
 - App access / reviewer instructions
 - Target audience and content
 - Content rating
@@ -106,7 +101,7 @@ Complete and verify:
 - Account deletion URL
 - Store listing assets and support contact
 
-### 9. Technical release checks
+### 8. Technical release checks
 
 - Target Android 16 / API 36 or higher for new Play submissions after 31 August 2026.
 - Build an Android App Bundle (`.aab`).
@@ -118,4 +113,4 @@ Complete and verify:
 
 Public Play release requires deliberate owner approval after every applicable gate above is green **and** after the distribution-cost gate is resolved without violating the current money rule.
 
-A successful debug APK/AAB, Play Console verification email, or AdMob setup step is not permission to publish or spend money.
+A successful debug APK/AAB or Play Console verification email is not permission to publish or spend money.
