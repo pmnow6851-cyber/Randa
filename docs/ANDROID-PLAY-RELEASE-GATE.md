@@ -26,7 +26,7 @@ Therefore:
 - Flutter static analysis passes in CI.
 - Android debug APK builds in CI.
 - Minimum Android SDK is 24.
-- Android app backup is disabled in the generated wrapper.
+- Android app backup is disabled in the committed Android wrapper.
 - Session tokens use secure storage.
 - Supabase authentication and paid-entitlement restoration remain server-backed.
 - The Flutter and PWA clients now provide an account-deletion request path, with a public deletion page.
