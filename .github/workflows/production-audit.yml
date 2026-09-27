@@ -88,6 +88,7 @@ jobs:
           PY
 
           node --check service-worker.js
+          node --test tests/service-worker.test.cjs
           grep -q "serviceWorker" index.html || {
             echo "Service worker registration not found in index.html";
             exit 1;
