@@ -27,6 +27,7 @@ Map<String, Object> completeFullMode() => {
       'camera': section(),
       'firing': section(),
       'gyroscope': section(),
+      'gyroscope_firing': section(),
     };
 
 void main() {
@@ -88,9 +89,21 @@ void main() {
     );
   });
 
+  test('rejects an incomplete gyro firing section', () {
+    final fullMode = completeFullMode();
+    (fullMode['gyroscope_firing'] as List).removeLast();
+    expect(
+      hasCompleteAimSyncMatrix({
+        'full_config': {'multiplayer': fullMode},
+      }, 'mp'),
+      isFalse,
+    );
+  });
+
   test('accepts OFF in gyro sections but rejects it in camera', () {
     final fullMode = completeFullMode();
     (fullMode['gyroscope'] as List)[0]['value'] = 'OFF';
+    (fullMode['gyroscope_firing'] as List)[0]['value'] = 'OFF';
     expect(
       hasCompleteAimSyncMatrix({
         'full_config': {'multiplayer': fullMode},
@@ -106,7 +119,7 @@ void main() {
     );
   });
 
-  test('requires complete camera, firing, and gyro sections for both modes', () {
+  test('requires complete sensitivity sections for both modes', () {
     final response = {
       'full_config': {
         'multiplayer': completeFullMode(),
@@ -118,6 +131,7 @@ void main() {
       'camera': section().take(9).toList(),
       'firing': section(),
       'gyroscope': section(),
+      'gyroscope_firing': section(),
     };
     expect(hasCompleteAimSyncMatrix(response, 'both'), isFalse);
     expect(hasCompleteAimSyncMatrix(response, 'mp'), isTrue);
