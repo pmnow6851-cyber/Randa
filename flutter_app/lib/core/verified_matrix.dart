@@ -68,7 +68,8 @@ bool _hasCompleteMode(Map<String, dynamic> data, String key) {
   final config = full[key] as Map;
   return _hasCompleteSection(config['camera'], allowGyroOff: false) &&
       _hasCompleteSection(config['firing'], allowGyroOff: false) &&
-      _hasCompleteSection(config['gyroscope'], allowGyroOff: true);
+      _hasCompleteSection(config['gyroscope'], allowGyroOff: true) &&
+      _hasCompleteSection(config['gyroscope_firing'], allowGyroOff: true);
 }
 
 bool hasCompleteAimSyncMatrix(
