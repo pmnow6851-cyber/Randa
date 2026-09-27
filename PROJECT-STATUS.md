@@ -1,6 +1,6 @@
 # RANDA.MKCOOL AIM SYNC SYSTEM — PROJECT STATUS
 
-Last reconciled: **26 September 2026**
+Last reconciled: **27 September 2026**
 
 ## Canonical production app
 
@@ -39,7 +39,7 @@ Use the single existing project named **RANDA.MKCOOL Aim Sync** as the only prod
 
 Current production controls:
 - project status: active and healthy
-- Supabase security advisor: no current findings after the 13 September 2026 review
+- Supabase security advisor: no warning/error findings on 27 September; one INFO notice for the intentionally policy-free, service-only revocation table
 - RLS enabled on all public application tables
 - user-owned profile/config rows are scoped to the authenticated user
 - `purchase_claims` remains service-side only; anonymous/authenticated roles are explicitly denied by policy and do not have table privileges
@@ -68,7 +68,7 @@ Official production flow:
 5. Only that signed webhook path may grant the `pro` entitlement. Entitlement is stored against the verified Stripe PaymentIntent reference.
 6. The Payment Link completion redirect may pass through `verify-checkout-return`, but that endpoint is deliberately non-authoritative: it validates only a safe return destination/session-id shape and redirects the browser back to the canonical app. It does **not** create or change paid access.
 7. On return, the app re-checks the server-side entitlement. Access appears only after the signed webhook has verified the payment.
-8. A full refund or Stripe dispute is handled by the same signed webhook and revokes paid access.
+8. A full refund or Stripe dispute is handled by the same signed webhook and permanently rejects that payment reference. Access remains active only if a separate verified purchase or independent entitlement still qualifies.
 9. `calculate-aim-sync` and `generate-gunsmith` require an active Stripe-backed `pro` entitlement before returning protected outputs.
 
 The signed Stripe webhook is the single source of truth for payment-to-entitlement state. Never restore client-side success flags or browser-return logic as an entitlement authority.
@@ -137,7 +137,7 @@ OpenAI API is not required by the production Aim Sync architecture. Do not add p
 7. No private addresses, bank details, API secrets, service-role keys, passwords, signing keys or recovery material in public/client configuration.
 8. Entitlements come only from the signed server-side Stripe webhook.
 9. Browser checkout-return state never grants access.
-10. Full refunds and disputes revoke paid access through the signed webhook.
+10. Full refunds and disputes reject the affected payment through the signed webhook; a separate verified purchase may still qualify for access.
 11. Base44 and legacy builds cannot create a second production path or retrieve protected calculations.
 12. Automated audits may report and block unsafe releases, but must never silently alter pricing, payout destination, entitlement policy or calculation logic.
 13. Dormant or unverified domains must not be permitted as production checkout, calculation or return origins.
@@ -172,6 +172,14 @@ Remaining owner-side/provider actions:
 - verify the RANDA business email directly in GitHub account settings if still pending
 - review Google third-party access and revoke no-longer-needed experimental services
 - keep `randa-aim-sync.com` disabled until registrar/DNS records are fixed and verified
+
+## Payment event hardening — 27 September 2026
+
+The private production backend migration `stripe_entitlement_terminal_revocation` and `stripe-webhook` version 5 are active. A fully refunded or disputed PaymentIntent is terminal, including when revocation arrives before the successful checkout event. Replayed paid events cannot restore that payment. A late refund of an older purchase cannot revoke a different verified purchase. The webhook remains the only payment entitlement authority; browser return state has no grant permission.
+
+Verification used the production PostgreSQL engine inside a temporary-table transaction that rolled back, plus locally signed synthetic webhook events. Cases covered first purchase, duplicate delivery, refund replay, refund before checkout, multiple purchases, cross-account reference reuse, separate-provider access, invalid signatures, stale signatures, test-mode rejection, wrong amount/email, full refund, partial refund and dispute. Production entitlement and revocation tables had zero rows after deployment. The live Stripe endpoint still subscribes to checkout completion, asynchronous success, full refunds and disputes. No card, bank, real customer, live charge or payout was used.
+
+The security advisor's INFO notice for `stripe_revoked_payments` having RLS with no policies is intentional: anonymous and authenticated roles have no table privileges or payment-function execution rights. The service role alone can record and read the revocation identifiers. An actual sandbox-to-backend checkout and a physical-device paid flow remain unverified; the available Stripe sandbox is a different account and cannot represent the connected live payment path.
 
 ## Growth controls
 
