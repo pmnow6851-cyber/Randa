@@ -1,4 +1,4 @@
-const CACHE_NAME = 'randa-aim-sync-v6-paid-20260926-privacy';
+const CACHE_NAME = 'randa-aim-sync-v6-paid-20260927-navigation';
 const APP_SHELL = [
   './',
   './index.html',
@@ -7,6 +7,9 @@ const APP_SHELL = [
   './icons/icon-512.png',
   './icons/maskable-512.png'
 ];
+
+const APP_ROOT_PATH = new URL('./', self.registration.scope).pathname;
+const APP_INDEX_PATH = new URL('./index.html', self.registration.scope).pathname;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -28,12 +31,17 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   if (event.request.mode === 'navigate') {
+    const url = new URL(event.request.url);
+    if (url.origin !== self.location.origin ||
+        (url.pathname !== APP_ROOT_PATH && url.pathname !== APP_INDEX_PATH)) {
+      return;
+    }
     event.respondWith(
       fetch(event.request, { cache: 'no-store' })
         .then((response) => {
           if (response && response.ok) {
             const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy));
+            event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy)));
           }
           return response;
         })
