@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/verified_matrix.dart';
+
 class SyncResultScreen extends StatelessWidget {
   const SyncResultScreen({
     super.key,
@@ -58,35 +60,12 @@ class SyncResultScreen extends StatelessWidget {
         .toList();
   }
 
-  List<_ResultEntry> _legacyEntries(
-    dynamic rows,
-    String valueKey,
-  ) {
-    return _maps(rows)
-        .map((row) {
-          final label = row['scope']?.toString() ?? '';
-          final value = row[valueKey];
-          if (label.isEmpty || value == null) return null;
-          return _ResultEntry(
-            label,
-            valueKey.startsWith('gyro') && value == 0
-                ? 'OFF'
-                : value.toString(),
-          );
-        })
-        .whereType<_ResultEntry>()
-        .toList();
-  }
-
   Map<String, dynamic>? _fullModeConfig(String key) {
     final full = _map(result['full_config']);
     return full == null ? null : _map(full[key]);
   }
 
-  List<_ResultSection> _sectionsForMode(
-    String key,
-    dynamic legacyRows,
-  ) {
+  List<_ResultSection> _sectionsForMode(String key) {
     final config = _fullModeConfig(key);
 
     final rotation = _entries(config?['rotation']);
@@ -110,26 +89,23 @@ class SyncResultScreen extends StatelessWidget {
         _ResultSection('FREE VIEW SENSITIVITY', freeView),
       _ResultSection(
         'CAMERA SENSITIVITY',
-        camera.isNotEmpty
-            ? camera
-            : _legacyEntries(legacyRows, 'camera'),
+        camera,
       ),
       _ResultSection(
         'FIRING SENSITIVITY',
-        firing.isNotEmpty
-            ? firing
-            : _legacyEntries(legacyRows, 'firing'),
+        firing,
       ),
       _ResultSection(
         'GYROSCOPE SENSITIVITY',
-        gyro.isNotEmpty
-            ? gyro
-            : _legacyEntries(legacyRows, 'gyroscope'),
+        gyro,
       ),
       if (gyroFiring.isNotEmpty)
         _ResultSection('GYROSCOPE FIRING SENSITIVITY', gyroFiring),
     ];
   }
+
+  bool get _hasCompleteConfig =>
+      hasCompleteAimSyncMatrix(result, requestedMode);
 
   bool get _showMp => requestedMode == 'mp' || requestedMode == 'both';
 
@@ -144,14 +120,10 @@ class SyncResultScreen extends StatelessWidget {
       ..writeln('============================')
       ..writeln();
 
-    void addMode(
-      String title,
-      String key,
-      dynamic legacyRows,
-    ) {
+    void addMode(String title, String key) {
       buffer.writeln(title);
       buffer.writeln('----------------------------');
-      for (final section in _sectionsForMode(key, legacyRows)) {
+      for (final section in _sectionsForMode(key)) {
         buffer.writeln(section.title);
         for (final entry in section.entries) {
           buffer.writeln('${entry.label}: ${entry.value}');
@@ -161,19 +133,11 @@ class SyncResultScreen extends StatelessWidget {
     }
 
     if (_showMp) {
-      addMode(
-        'MULTIPLAYER',
-        'multiplayer',
-        result['multiplayer'],
-      );
+      addMode('MULTIPLAYER', 'multiplayer');
     }
 
     if (_showBr) {
-      addMode(
-        'BATTLE ROYALE',
-        'battle_royale',
-        result['battle_royale'],
-      );
+      addMode('BATTLE ROYALE', 'battle_royale');
     }
 
     buffer
@@ -184,6 +148,7 @@ class SyncResultScreen extends StatelessWidget {
   }
 
   Future<void> _copyToClipboard(BuildContext context) async {
+    if (!_hasCompleteConfig) return;
     bool verified = false;
     try {
       verified = await verifyPaidAccess();
@@ -247,6 +212,26 @@ class SyncResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasCompleteConfig) {
+      return Scaffold(
+        backgroundColor: _background,
+        appBar: AppBar(
+          backgroundColor: _background,
+          foregroundColor: Colors.white,
+          title: const Text('RESULT UNAVAILABLE'),
+        ),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Verified configuration is incomplete. Please try again later.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: _background,
       appBar: AppBar(
@@ -301,19 +286,13 @@ class SyncResultScreen extends StatelessWidget {
                   if (_showMp)
                     _GameModePanel(
                       title: 'MULTIPLAYER',
-                      sections: _sectionsForMode(
-                        'multiplayer',
-                        result['multiplayer'],
-                      ),
+                      sections: _sectionsForMode('multiplayer'),
                     ),
                   if (_showMp && _showBr) const SizedBox(height: 20),
                   if (_showBr)
                     _GameModePanel(
                       title: 'BATTLE ROYALE',
-                      sections: _sectionsForMode(
-                        'battle_royale',
-                        result['battle_royale'],
-                      ),
+                      sections: _sectionsForMode('battle_royale'),
                     ),
                 ],
               ),
