@@ -62,7 +62,10 @@ UK_POSTCODE_RE = re.compile(r"\b(?:GIR\s?0AA|[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})\
 TEXT_EXCLUDED_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico", ".zip"}
 PII_SCAN_EXCLUDES = set()
 TRUSTED_EMAIL_SUFFIXES = ("@example.com", "@users.noreply.github.com")
-PUBLIC_CONTACT_EMAIL_HASHES = {"support.html": {"f0b52beb11dab90c5140ca9fae605391bb169b34e992a6e83758399b2a0429c4"}}
+PUBLIC_CONTACT_EMAIL_HASHES = {
+    "support.html": {"f0b52beb11dab90c5140ca9fae605391bb169b34e992a6e83758399b2a0429c4"},
+    "store-support.html": {"f0b52beb11dab90c5140ca9fae605391bb169b34e992a6e83758399b2a0429c4"},
+}
 
 FORBIDDEN_TRACKED_NAME_PATTERNS = (
     re.compile(r"(^|/)\.env(?:\.|$)", re.I),
