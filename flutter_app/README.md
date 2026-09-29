@@ -19,13 +19,14 @@ From this `flutter_app` directory with Flutter 3.47.2 installed:
 ```bash
 flutter pub get
 flutter analyze
-flutter build apk --debug
-flutter build appbundle --release
+flutter test --dart-define=RANDA_DISTRIBUTION_CHANNEL=google_play
+flutter build apk --debug --dart-define=RANDA_DISTRIBUTION_CHANNEL=google_play
+flutter build appbundle --release --dart-define=RANDA_DISTRIBUTION_CHANNEL=google_play
 ```
 
 Do not run `flutter create` as part of a normal build. The Android wrapper is source-controlled and must remain reproducible from the repository.
 
-The repository workflow `.github/workflows/flutter-android-check.yml` verifies the committed Android project, runs analysis, builds a debug APK, and builds a release AAB validation artifact.
+The repository workflow `.github/workflows/flutter-android-check.yml` verifies the committed Android project, runs analysis, runs the automated tests with the Google Play distribution channel, and builds a debug APK and an unsigned release AAB with that same channel. Use the matching debug APK for physical-device evidence. A debug-APK pass does not replace testing the final signed release delivered by Play.
 
 ## Signing and secret boundary
 

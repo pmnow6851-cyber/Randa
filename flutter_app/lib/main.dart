@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'app_config.dart';
 import 'core/distribution_policy.dart';
+import 'core/verified_matrix.dart';
 import 'screens/sync_result_screen.dart';
 
 void main() {
@@ -74,7 +75,10 @@ class _AimSyncHomeState extends State<AimSyncHome>
   static const _healthUrl = '$_supabaseUrl/functions/v1/system-health';
   static const _deleteAccountUrl =
       '$_supabaseUrl/functions/v1/delete-my-account';
-  static const _supportUrl = '$_canonicalOrigin/Randa/support.html';
+  static final _supportUrl =
+      RandaDistributionPolicy.externalStripeCheckoutAllowed
+          ? '$_canonicalOrigin/Randa/support.html'
+          : '$_canonicalOrigin/Randa/store-support.html';
 
   static const _storage = FlutterSecureStorage();
   static const _accessKey = 'randa_access_token_v1';
@@ -107,6 +111,7 @@ class _AimSyncHomeState extends State<AimSyncHome>
   int _calcEpoch = 0;
   int _sessionEpoch = 0;
   bool _calculating = false;
+  bool _resultRouteOpen = false;
 
   @override
   void initState() {
@@ -473,27 +478,72 @@ class _AimSyncHomeState extends State<AimSyncHome>
     }
   }
 
+  void _closeResultRoute() {
+    if (_resultRouteOpen && mounted) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
+  }
+
+  void _lockPaidResult({bool closeRoute = true}) {
+    _calcDebounce?.cancel();
+    _calcEpoch++;
+    if (mounted) {
+      setState(() {
+        _isPro = false;
+        _result = null;
+        _calculating = false;
+      });
+      if (closeRoute) _closeResultRoute();
+    }
+  }
+
+  Future<bool> _verifyPaidResultAccess(
+    Map<String, dynamic> expectedResult,
+  ) async {
+    if (!mounted ||
+        !_signedIn ||
+        !_isPro ||
+        _accessToken.isEmpty ||
+        !identical(_result, expectedResult)) {
+      return false;
+    }
+    final sessionEpoch = _sessionEpoch;
+    bool verified;
+    try {
+      verified = await _checkEntitlement().timeout(const Duration(seconds: 10));
+    } catch (_) {
+      verified = false;
+    }
+    if (!mounted ||
+        sessionEpoch != _sessionEpoch ||
+        !identical(_result, expectedResult)) {
+      return false;
+    }
+    if (!verified) {
+      _lockPaidResult(closeRoute: false);
+      return false;
+    }
+    return _signedIn && _isPro && _accessToken.isNotEmpty;
+  }
+
   Future<void> _refreshAccessAndMaybeCalculate() async {
     if (!_signedIn) return;
     final sessionEpoch = _sessionEpoch;
     try {
-      final pro = await _checkEntitlement();
+      final pro = await _checkEntitlement()
+          .timeout(const Duration(seconds: 10));
       if (!mounted || sessionEpoch != _sessionEpoch) return;
-      setState(() {
-        _isPro = pro;
-        if (!pro) {
-          _calcDebounce?.cancel();
-          _calcEpoch++;
-          _result = null;
-          _calculating = false;
-        }
-      });
-      if (pro) {
-        await _calculate();
+      if (!pro) {
+        _lockPaidResult();
+        return;
       }
+      _closeResultRoute();
+      setState(() => _isPro = true);
+      await _calculate();
     } catch (_) {
-      if (mounted) {
-        _snack('Could not refresh access. Please try again.');
+      if (mounted && sessionEpoch == _sessionEpoch) {
+        _lockPaidResult();
+        _snack('Paid access could not be verified. Reconnect and refresh.');
       }
     }
   }
@@ -590,11 +640,7 @@ class _AimSyncHomeState extends State<AimSyncHome>
       final data = await _decode(response);
       if (!mounted || epoch != _calcEpoch) return;
       if (response.statusCode == 402) {
-        setState(() {
-          _isPro = false;
-          _result = null;
-          _calculating = false;
-        });
+        _lockPaidResult();
         _snack('Paid access is not active.');
         return;
       }
@@ -603,10 +649,20 @@ class _AimSyncHomeState extends State<AimSyncHome>
           'Aim Sync could not be generated. Please try again.',
         );
       }
+      if (!hasCompleteAimSyncMatrix(data, payload['mode'] as String)) {
+        throw const _SafeUserException(
+          'Verified configuration is incomplete. Please try again later.',
+        );
+      }
       setState(() {
         _result = data;
         _calculating = false;
       });
+    } on _SafeUserException catch (error) {
+      if (mounted && epoch == _calcEpoch) {
+        setState(() => _calculating = false);
+        _snack(error.message);
+      }
     } catch (_) {
       if (mounted && epoch == _calcEpoch) {
         setState(() => _calculating = false);
@@ -626,21 +682,32 @@ class _AimSyncHomeState extends State<AimSyncHome>
     _calcDebounce = Timer(const Duration(milliseconds: 350), _calculate);
   }
 
-  void _openFullResult() {
+  Future<void> _openFullResult() async {
     final data = _result;
     if (!_isPro || data == null) return;
+    if (!await _verifyPaidResultAccess(data)) {
+      if (mounted) _snack('Paid access or configuration could not be verified.');
+      return;
+    }
+    if (!mounted || !identical(_result, data)) return;
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => SyncResultScreen(
-          result: Map<String, dynamic>.from(data),
-          baseSensitivity: _base.round(),
-          inputFov: _fov.round(),
-          selectedRotation: _rotation,
-          requestedMode: _mode,
+    _resultRouteOpen = true;
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => SyncResultScreen(
+            result: Map<String, dynamic>.from(data),
+            baseSensitivity: _base.round(),
+            inputFov: _fov.round(),
+            selectedRotation: _rotation,
+            requestedMode: _mode,
+            verifyPaidAccess: () => _verifyPaidResultAccess(data),
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      _resultRouteOpen = false;
+    }
   }
 
   Future<void> _withBusy(Future<void> Function() action) async {
@@ -970,9 +1037,11 @@ class _AimSyncHomeState extends State<AimSyncHome>
                   style: const TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 10),
-                if (_result!['multiplayer'] is List)
+                if ((_mode == 'mp' || _mode == 'both') &&
+                    hasCompleteLegacyMatrix(_result!['multiplayer']))
                   _ResultTable(title: 'MULTIPLAYER', rows: _result!['multiplayer'] as List),
-                if (_result!['battle_royale'] is List)
+                if ((_mode == 'br' || _mode == 'both') &&
+                    hasCompleteLegacyMatrix(_result!['battle_royale']))
                   _ResultTable(title: 'BATTLE ROYALE', rows: _result!['battle_royale'] as List),
                 const SizedBox(height: 14),
                 SizedBox(
