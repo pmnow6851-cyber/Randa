@@ -53,7 +53,7 @@ These remain unverified until checked in the owner-controlled release and Play C
 - Eligible verified Play developer account and production access; applicable closed-testing and device-verification requirements completed. No registration payment under the current zero-spend rule.
 - Deliberately approved distribution/monetisation route. The Google Play channel blocks external Stripe checkout and has no native purchase implementation. Existing-paid-account access is not proof of a working in-app sales route.
 - Owner-controlled signing, verified final signed AAB, package/version identity and final release-device tests. The unsigned CI AAB is not a submission artifact.
-- Privacy/Data safety, working account deletion, reviewer app access, content rating, listing, support contact and original/licensed assets checked against the submitted build.
+- Privacy/Data safety, working account deletion, reviewer app access, content rating, listing, support contact and original/licensed assets checked against the submitted build. Verify the store support page is live and contains no route to checkout; committed source alone does not prove that public URL works.
 - Backend authorisation, payment-to-entitlement and revocation evidence; dependency/security findings resolved or explicitly assessed.
 
 Completing the six cases does not satisfy these separate publication gates. Keep PR #54 draft while evidence is incomplete; do not merge or publish solely to turn a checklist green.

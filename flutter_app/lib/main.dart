@@ -75,7 +75,10 @@ class _AimSyncHomeState extends State<AimSyncHome>
   static const _healthUrl = '$_supabaseUrl/functions/v1/system-health';
   static const _deleteAccountUrl =
       '$_supabaseUrl/functions/v1/delete-my-account';
-  static const _supportUrl = '$_canonicalOrigin/Randa/support.html';
+  static final _supportUrl =
+      RandaDistributionPolicy.externalStripeCheckoutAllowed
+          ? '$_canonicalOrigin/Randa/support.html'
+          : '$_canonicalOrigin/Randa/store-support.html';
 
   static const _storage = FlutterSecureStorage();
   static const _accessKey = 'randa_access_token_v1';
