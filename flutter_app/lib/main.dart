@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'app_config.dart';
 import 'core/distribution_policy.dart';
+import 'core/session_token_store.dart';
 import 'core/verified_matrix.dart';
 import 'screens/sync_result_screen.dart';
 
@@ -56,7 +56,10 @@ class RandaAimSyncApp extends StatelessWidget {
 }
 
 class AimSyncHome extends StatefulWidget {
-  const AimSyncHome({super.key});
+  const AimSyncHome({super.key, this.client, this.tokenStore});
+
+  final http.Client? client;
+  final SessionTokenStore? tokenStore;
 
   @override
   State<AimSyncHome> createState() => _AimSyncHomeState();
@@ -80,7 +83,9 @@ class _AimSyncHomeState extends State<AimSyncHome>
           ? '$_canonicalOrigin/Randa/support.html'
           : '$_canonicalOrigin/Randa/store-support.html';
 
-  static const _storage = FlutterSecureStorage();
+  static const _requestTimeout = Duration(seconds: 10);
+  late final _storage = widget.tokenStore ?? const SecureSessionTokenStore();
+  late final _client = widget.client ?? http.Client();
   static const _accessKey = 'randa_access_token_v1';
   static const _refreshKey = 'randa_refresh_token_v1';
 
@@ -97,6 +102,7 @@ class _AimSyncHomeState extends State<AimSyncHome>
   bool _signedIn = false;
   bool _isPro = false;
   bool _checkingAccess = true;
+  bool _recoveryError = false;
 
   double _base = 126;
   double _fov = 70;
@@ -112,6 +118,9 @@ class _AimSyncHomeState extends State<AimSyncHome>
   int _sessionEpoch = 0;
   bool _calculating = false;
   bool _resultRouteOpen = false;
+  Future<void> _tokenWrites = Future<void>.value();
+  Future<bool>? _refreshInFlight;
+  int? _refreshEpoch;
 
   @override
   void initState() {
@@ -126,24 +135,48 @@ class _AimSyncHomeState extends State<AimSyncHome>
     _calcDebounce?.cancel();
     _email.dispose();
     _password.dispose();
+    _sessionEpoch++;
+    if (widget.client == null) _client.close();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_signedIn) _lockPaidResult();
     if (state == AppLifecycleState.resumed && _signedIn) {
       unawaited(_refreshAccessAndMaybeCalculate());
     }
   }
 
   Future<void> _bootstrap() async {
-    await _checkHealth();
-    _accessToken = await _storage.read(key: _accessKey) ?? '';
-    _refreshToken = await _storage.read(key: _refreshKey) ?? '';
-    if (_accessToken.isNotEmpty) {
-      await _restoreSession();
+    final epoch = _sessionEpoch;
+    if (mounted) {
+      setState(() {
+        _checkingAccess = true;
+        _recoveryError = false;
+      });
     }
-    if (mounted) setState(() => _checkingAccess = false);
+    try {
+      await _checkHealth();
+      final tokens = await Future.wait([
+        _storage.read(key: _accessKey),
+        _storage.read(key: _refreshKey),
+      ]).timeout(_requestTimeout);
+      if (!mounted || epoch != _sessionEpoch) return;
+      _accessToken = tokens[0] ?? '';
+      _refreshToken = tokens[1] ?? '';
+      if (_accessToken.isNotEmpty || _refreshToken.isNotEmpty) {
+        await _restoreSession();
+      }
+    } catch (_) {
+      if (mounted && epoch == _sessionEpoch) {
+        _lockPaidResult();
+        setState(() => _recoveryError = true);
+        _snack('Could not check your account. Reconnect and retry.');
+      }
+    } finally {
+      if (mounted) setState(() => _checkingAccess = false);
+    }
   }
 
   Map<String, String> _headers({bool authenticated = false}) => {
@@ -169,46 +202,76 @@ class _AimSyncHomeState extends State<AimSyncHome>
     return data;
   }
 
-  Future<void> _saveTokens(Map<String, dynamic>? data) async {
-    _accessToken = data?['access_token']?.toString() ?? '';
-    _refreshToken = data?['refresh_token']?.toString() ?? '';
-    if (_accessToken.isEmpty) {
-      await _storage.delete(key: _accessKey);
-    } else {
-      await _storage.write(key: _accessKey, value: _accessToken);
+  Future<void> _saveTokens(
+    Map<String, dynamic>? data, {
+    int? expectedEpoch,
+  }) {
+    final epoch = expectedEpoch ?? _sessionEpoch;
+    final access = data?['access_token'];
+    final refresh = data?['refresh_token'];
+    if (data != null &&
+        (access is! String || access.isEmpty ||
+            refresh is! String || refresh.isEmpty)) {
+      throw const _SafeUserException('Account response could not be verified.');
     }
-    if (_refreshToken.isEmpty) {
-      await _storage.delete(key: _refreshKey);
-    } else {
-      await _storage.write(key: _refreshKey, value: _refreshToken);
-    }
+    final write = _tokenWrites.then((_) async {
+      if (!mounted || epoch != _sessionEpoch) return;
+      if (data == null) {
+        _accessToken = '';
+        _refreshToken = '';
+        await _storage.delete(key: _accessKey);
+        await _storage.delete(key: _refreshKey);
+      } else {
+        await _storage.write(key: _accessKey, value: access as String);
+        await _storage.write(key: _refreshKey, value: refresh as String);
+        if (!mounted || epoch != _sessionEpoch) return;
+        _accessToken = access;
+        _refreshToken = refresh;
+      }
+    });
+    _tokenWrites = write.catchError((Object _) {});
+    return write;
   }
 
-  Future<bool> _refreshSession() async {
-    if (_refreshToken.isEmpty) return false;
-    try {
-      final response = await http.post(
-        Uri.parse('$_supabaseUrl/auth/v1/token?grant_type=refresh_token'),
-        headers: _headers(),
-        body: jsonEncode({'refresh_token': _refreshToken}),
-      );
-      final data = await _decode(response);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return false;
-      }
-      await _saveTokens(data);
-      return true;
-    } catch (_) {
+  Future<bool> _refreshSession() {
+    final pending = _refreshInFlight;
+    if (pending != null && _refreshEpoch == _sessionEpoch) return pending;
+    if (_refreshToken.isEmpty) return Future<bool>.value(false);
+    final epoch = _sessionEpoch;
+    final token = _refreshToken;
+    late final Future<bool> refresh;
+    refresh = _refreshSessionOnce(epoch, token).whenComplete(() {
+      if (identical(_refreshInFlight, refresh)) _refreshInFlight = null;
+    });
+    _refreshEpoch = epoch;
+    _refreshInFlight = refresh;
+    return refresh;
+  }
+
+  Future<bool> _refreshSessionOnce(int epoch, String token) async {
+    final response = await _client.post(
+      Uri.parse('$_supabaseUrl/auth/v1/token?grant_type=refresh_token'),
+      headers: _headers(),
+      body: jsonEncode({'refresh_token': token}),
+    ).timeout(_requestTimeout);
+    if (!mounted || epoch != _sessionEpoch) return false;
+    if (response.statusCode == 400 || response.statusCode == 401 ||
+        response.statusCode == 403) {
       return false;
     }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw const _SafeUserException('Could not refresh your account. Retry.');
+    }
+    await _saveTokens(await _decode(response), expectedEpoch: epoch);
+    return mounted && epoch == _sessionEpoch && _accessToken.isNotEmpty;
   }
 
   Future<void> _checkHealth() async {
     try {
-      final response = await http.get(
+      final response = await _client.get(
         Uri.parse(_healthUrl),
         headers: {'cache-control': 'no-store'},
-      );
+      ).timeout(_requestTimeout);
       final data = await _decode(response);
       if (mounted) {
         setState(() {
@@ -221,17 +284,23 @@ class _AimSyncHomeState extends State<AimSyncHome>
   }
 
   Future<Map<String, dynamic>?> _getUser() async {
-    if (_accessToken.isEmpty) return null;
-    Future<http.Response> call() => http.get(
+    if (_accessToken.isEmpty && !await _refreshSession()) return null;
+    Future<http.Response> call() => _client.get(
           Uri.parse('$_supabaseUrl/auth/v1/user'),
           headers: _headers(authenticated: true),
-        );
+        ).timeout(_requestTimeout);
     var response = await call();
     if (response.statusCode == 401 && await _refreshSession()) {
       response = await call();
     }
-    if (response.statusCode != 200) return null;
+    if (response.statusCode == 401 || response.statusCode == 403) return null;
+    if (response.statusCode != 200) {
+      throw const _SafeUserException('Could not verify your account. Retry.');
+    }
     final data = await _decode(response);
+    if (data['id'] is! String || (data['id'] as String).isEmpty) {
+      throw const _SafeUserException('Account response could not be verified.');
+    }
     return data;
   }
 
@@ -241,10 +310,10 @@ class _AimSyncHomeState extends State<AimSyncHome>
     final uri = Uri.parse(
       '$_supabaseUrl/rest/v1/access_entitlements?select=tier,status&user_id=eq.$query&limit=1',
     );
-    Future<http.Response> call() => http.get(
+    Future<http.Response> call() => _client.get(
           uri,
           headers: _headers(authenticated: true),
-        );
+        ).timeout(_requestTimeout);
     var response = await call();
     if (response.statusCode == 401 && await _refreshSession()) {
       response = await call();
@@ -275,7 +344,7 @@ class _AimSyncHomeState extends State<AimSyncHome>
       final user = await _getUser();
       if (!mounted || sessionEpoch != _sessionEpoch) return;
       if (user == null || user['id'] == null) {
-        await _saveTokens(null);
+        await _saveTokens(null, expectedEpoch: sessionEpoch);
         if (!mounted || sessionEpoch != _sessionEpoch) return;
         if (mounted) {
           setState(() {
@@ -297,12 +366,15 @@ class _AimSyncHomeState extends State<AimSyncHome>
         setState(() {
           _signedIn = true;
           _isPro = pro;
+          _recoveryError = false;
           _result = null;
         });
       }
       if (pro) await _calculate();
     } catch (_) {
       if (mounted && sessionEpoch == _sessionEpoch) {
+        _lockPaidResult();
+        setState(() => _recoveryError = true);
         _snack('Could not restore the account session.');
       }
     }
@@ -316,11 +388,13 @@ class _AimSyncHomeState extends State<AimSyncHome>
       return;
     }
     await _withBusy(() async {
-      final response = await http.post(
+      final epoch = ++_sessionEpoch;
+      final response = await _client.post(
         Uri.parse('$_supabaseUrl/auth/v1/signup'),
         headers: _headers(),
         body: jsonEncode({'email': email, 'password': password}),
-      );
+      ).timeout(_requestTimeout);
+      if (!mounted || epoch != _sessionEpoch) return;
       final data = await _decode(response);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw const _SafeUserException(
@@ -328,7 +402,8 @@ class _AimSyncHomeState extends State<AimSyncHome>
         );
       }
       if (data['access_token'] != null) {
-        await _saveTokens(data);
+        await _saveTokens(data, expectedEpoch: epoch);
+        if (!mounted || epoch != _sessionEpoch) return;
         _password.clear();
         await _restoreSession();
         _snack('Account created. Paid unlock is still required.');
@@ -347,20 +422,24 @@ class _AimSyncHomeState extends State<AimSyncHome>
       return;
     }
     await _withBusy(() async {
-      final response = await http.post(
+      final epoch = ++_sessionEpoch;
+      final response = await _client.post(
         Uri.parse('$_supabaseUrl/auth/v1/token?grant_type=password'),
         headers: _headers(),
         body: jsonEncode({'email': email, 'password': password}),
-      );
+      ).timeout(_requestTimeout);
+      if (!mounted || epoch != _sessionEpoch) return;
       final data = await _decode(response);
       if (response.statusCode != 200) {
         throw const _SafeUserException(
           'Sign-in failed. Check your details and try again.',
         );
       }
-      await _saveTokens(data);
+      await _saveTokens(data, expectedEpoch: epoch);
+      if (!mounted || epoch != _sessionEpoch) return;
       _password.clear();
       await _restoreSession();
+      if (!_signedIn) return;
       _snack(_isPro ? 'Paid access restored.' : 'Signed in. Unlock required.');
     });
   }
@@ -371,6 +450,8 @@ class _AimSyncHomeState extends State<AimSyncHome>
     _calcEpoch++;
     final logoutHeaders = _headers(authenticated: true);
     final hadSession = _accessToken.isNotEmpty;
+    _accessToken = '';
+    _refreshToken = '';
     _email.clear();
     _password.clear();
     if (mounted) {
@@ -381,6 +462,7 @@ class _AimSyncHomeState extends State<AimSyncHome>
         _userEmail = '';
         _result = null;
         _calculating = false;
+        _recoveryError = false;
       });
     }
     try {
@@ -391,7 +473,7 @@ class _AimSyncHomeState extends State<AimSyncHome>
     }
     try {
       if (hadSession) {
-        await http.post(
+        await _client.post(
           Uri.parse('$_supabaseUrl/auth/v1/logout'),
           headers: logoutHeaders,
         ).timeout(const Duration(seconds: 5));
@@ -426,10 +508,10 @@ class _AimSyncHomeState extends State<AimSyncHome>
     if (confirmed != true || !mounted) return;
 
     await _withBusy(() async {
-      Future<http.Response> call() => http.delete(
+      Future<http.Response> call() => _client.delete(
             Uri.parse(_deleteAccountUrl),
             headers: _headers(authenticated: true),
-          );
+          ).timeout(_requestTimeout);
       var response = await call();
       if (response.statusCode == 401 && await _refreshSession()) {
         response = await call();
@@ -567,11 +649,11 @@ class _AimSyncHomeState extends State<AimSyncHome>
     }
 
     await _withBusy(() async {
-      Future<http.Response> call() => http.post(
+      Future<http.Response> call() => _client.post(
             Uri.parse(_checkoutUrl),
             headers: _headers(authenticated: true),
             body: jsonEncode({'client': 'mobile'}),
-          );
+          ).timeout(_requestTimeout);
       var response = await call();
       if (response.statusCode == 401 && await _refreshSession()) {
         response = await call();
@@ -628,11 +710,11 @@ class _AimSyncHomeState extends State<AimSyncHome>
       });
     }
     try {
-      Future<http.Response> call() => http.post(
+      Future<http.Response> call() => _client.post(
             Uri.parse(_calcUrl),
             headers: _headers(authenticated: true),
             body: jsonEncode(payload),
-          );
+          ).timeout(_requestTimeout);
       var response = await call();
       if (response.statusCode == 401 && await _refreshSession()) {
         response = await call();
@@ -762,6 +844,10 @@ class _AimSyncHomeState extends State<AimSyncHome>
       ),
       body: RefreshIndicator(
         onRefresh: () async {
+          if (_recoveryError) {
+            await _bootstrap();
+            return;
+          }
           await _checkHealth();
           await _refreshAccessAndMaybeCalculate();
         },
@@ -770,6 +856,15 @@ class _AimSyncHomeState extends State<AimSyncHome>
           children: [
             _hero(),
             const SizedBox(height: 14),
+            if (_recoveryError) ...[
+              const Text('Account check unavailable. Your setup stays locked.'),
+              TextButton.icon(
+                onPressed: _checkingAccess || _busy ? null : _bootstrap,
+                icon: const Icon(Icons.refresh),
+                label: const Text('RETRY CONNECTION'),
+              ),
+              const SizedBox(height: 14),
+            ],
             _accountCard(),
             const SizedBox(height: 14),
             if (!_isPro) ...[
@@ -867,14 +962,14 @@ class _AimSyncHomeState extends State<AimSyncHome>
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: _busy ? null : _signIn,
+                        onPressed: _busy || _checkingAccess ? null : _signIn,
                         child: const Text('SIGN IN'),
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: FilledButton(
-                        onPressed: _busy ? null : _signUp,
+                        onPressed: _busy || _checkingAccess ? null : _signUp,
                         child: const Text('CREATE ACCOUNT'),
                       ),
                     ),

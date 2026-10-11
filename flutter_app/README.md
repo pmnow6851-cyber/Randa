@@ -42,6 +42,20 @@ Native builds require an explicit `RANDA_DISTRIBUTION_CHANNEL` at build time. Th
 
 The app links to the official privacy and support page. Signed-in users can request deletion through the protected `delete-my-account` function after confirmation. Sign-out and completed deletion clear local secure-storage tokens and in-memory paid results.
 
+## Draft session recovery repair (11 October 2026)
+
+HTTP requests and startup secure-storage reads have a ten-second timeout.
+Temporary server failures and malformed successful responses keep saved tokens
+for retry while hiding paid results. Definitive authentication rejection clears
+tokens. A saved refresh token can restore a missing access token. Refreshes share
+one in-flight request per session; secure-storage writes are ordered, and stale
+responses cannot reinstate a signed-out session. Leaving or resuming the app
+clears protected results until a fresh server check succeeds.
+
+The added tests use synthetic accounts and injected HTTP/storage doubles. They
+do not verify live payments, backend authorisation or physical Android storage.
+Keep this repair in draft PR #54 until those release gates are satisfied.
+
 ## Release rule
 
 Do not replace the canonical live PWA or publish the Android build solely because it compiles. A public release still requires owner-controlled production signing, physical-device testing, payment/unlock testing, store-policy review, privacy disclosures and deliberate owner approval.
