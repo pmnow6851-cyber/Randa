@@ -10,7 +10,7 @@ import 'package:randa_mkcool_aim_sync/main.dart';
 
 const _accessKey = 'randa_access_token_v1';
 const _refreshKey = 'randa_refresh_token_v1';
-const _user = '{"id":"fixture-user","email":"fixture@example.invalid"}';
+const _user = '{"id":"fixture-user","email":"fixture@example.com"}';
 
 class _MemoryTokens implements SessionTokenStore {
   _MemoryTokens({String? access = 'fixture-access', String? refresh = 'fixture-refresh'})
