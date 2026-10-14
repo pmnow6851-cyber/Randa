@@ -45,7 +45,7 @@ jobs:
 
           workflow = Path(".github/workflows/codeql.yml").read_text(encoding="utf-8")
           matches = re.findall(
-              r"(?m)^[ \t]*uses:[ \t]*github/codeql-action/(init|analyze)@([0-9a-f]{40})(?:[ \t]|$)",
+              r"(?m)^[ \t]*uses[ \t]*:[ \t]*github/codeql-action/(init|analyze)@([0-9a-f]{40})(?:[ \t]|$)",
               workflow,
           )
           if (len(matches) != 2 or
