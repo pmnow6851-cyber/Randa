@@ -1,0 +1,17 @@
+name: Feature proposal (public-safe)
+description: Propose enhancements without releasing formulas, private methods or paid outputs.
+title: "[Feature] "
+body:
+  - type: textarea
+    id: change
+    attributes:
+      label: Intended customer benefit
+      description: Do not include paid configurations, secrets or personal information.
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Security, paid access and £0-cost impact
+    validations:
+      required: true

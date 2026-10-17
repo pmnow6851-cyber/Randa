@@ -1,0 +1,25 @@
+name: Public-safe app bug
+description: Technical feedback only. No paid sensitivity results or personal/customer information.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: "Public repository: never post emails, IDs, payment records, access tokens, private screenshots, proprietary sensitivity values or the calculation method. Do not share live account details."
+  - type: dropdown
+    id: component
+    attributes:
+      label: Area
+      options:
+        - Public landing / help
+        - Sign-in or access message (no account information)
+        - Android UI (no protected values)
+        - General accessibility
+        - Other public-safe issue
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Non-sensitive description
+    validations:
+      required: true
