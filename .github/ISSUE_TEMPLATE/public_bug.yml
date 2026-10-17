@@ -1,0 +1,46 @@
+name: Public-safe app bug
+description: Report non-sensitive behaviour without exposing accounts, paid outputs or private data.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        PUBLIC ISSUE: this report may be visible to everyone.
+        Never post emails, names, player IDs, payment records, login or session
+        identifiers, access tokens, raw logs, real-account screenshots, paid
+        sensitivity results, private formulas or implementation details.
+        Use generic text and synthetic examples only. For suspected security
+        vulnerabilities, use GitHub private vulnerability reporting if enabled;
+        otherwise do not disclose details here.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Area
+      options:
+        - Public landing / help
+        - Sign-in or access message (no account information)
+        - Android UI (no protected values)
+        - General accessibility
+        - Other public-safe issue
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Non-sensitive behaviour and expected result
+      description: Describe what went wrong without copying a log, a paid output or a private screen.
+      placeholder: "Example: A public help button did not open its information panel."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Public-safe reproduction steps (if possible)
+      description: Use only a public or synthetic example. Never disclose credentials, account details or protected results.
+  - type: checkboxes
+    id: public_safe
+    attributes:
+      label: Public-content confirmation
+      options:
+        - label: I have removed personal, payment, security-sensitive and proprietary information.
+          required: true
