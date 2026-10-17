@@ -1,17 +1,36 @@
 name: Feature proposal (public-safe)
-description: Propose enhancements without releasing formulas, private methods or paid outputs.
+description: Suggest improvements without sharing paid outputs, personal data or private methods.
 title: "[Feature] "
 body:
+  - type: markdown
+    attributes:
+      value: >-
+        PUBLIC ISSUE: anything submitted here may be visible to everyone.
+        Do not include personal or player identifiers, email addresses, account or
+        payment details, session IDs, access tokens, logs, private screenshots,
+        proprietary sensitivity values, formulas or implementation details.
+        Do not report exploit steps or suspected vulnerabilities publicly.
+        Use GitHub private vulnerability reporting if it is available; otherwise
+        do not publish sensitive details and ask the owner for a private route.
   - type: textarea
     id: change
     attributes:
       label: Intended customer benefit
-      description: Do not include paid configurations, secrets or personal information.
+      description: Explain the user-facing outcome only, not protected calculations or private design.
+      placeholder: "Example: Make a public help message easier to understand."
     validations:
       required: true
   - type: textarea
     id: safety
     attributes:
-      label: Security, paid access and £0-cost impact
+      label: High-level security, paid access, accessibility and cost impact
+      description: Use non-sensitive information only. Do not include credentials, private architecture or vulnerability details.
     validations:
       required: true
+  - type: checkboxes
+    id: public_safe
+    attributes:
+      label: Public-content confirmation
+      options:
+        - label: I have removed identifying, payment, security-sensitive and proprietary information.
+          required: true
