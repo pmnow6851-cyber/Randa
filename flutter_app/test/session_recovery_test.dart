@@ -189,4 +189,47 @@ void main() {
     _expectLocked();
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('selects an active pro grant when an older record is revoked',
+      (tester) async {
+    final tokens = _MemoryTokens();
+    var queryWasScoped = false;
+    final client = MockClient((request) async {
+      if (request.url.path.endsWith('/system-health')) {
+        return http.Response('{"ok":true}', 200);
+      }
+      if (request.url.path == '/auth/v1/user') {
+        return http.Response(_user, 200);
+      }
+      if (request.url.path == '/rest/v1/access_entitlements') {
+        final filters = request.url.queryParameters;
+        queryWasScoped = filters['user_id'] == 'eq.fixture-user' &&
+            filters['tier'] == 'eq.pro' &&
+            filters['status'] == 'eq.active';
+        const grants = [
+          {'tier': 'pro', 'status': 'revoked'},
+          {'tier': 'pro', 'status': 'active'},
+        ];
+        final matches = grants
+            .where((grant) =>
+                (filters['tier'] == null ||
+                    filters['tier'] == 'eq.${grant['tier']}') &&
+                (filters['status'] == null ||
+                    filters['status'] == 'eq.${grant['status']}'))
+            .take(1)
+            .toList();
+        return http.Response(jsonEncode(matches), 200);
+      }
+      if (request.url.path.endsWith('/calculate-aim-sync')) {
+        return http.Response('{"error":"fixture"}', 503);
+      }
+      return http.Response('{}', 404);
+    });
+
+    await _mount(tester, tokens, client);
+    expect(queryWasScoped, isTrue);
+    expect(find.text('PAID ACCESS ACTIVE'), findsOneWidget);
+    expect(tokens.deletes, 0);
+  });
+
 }
