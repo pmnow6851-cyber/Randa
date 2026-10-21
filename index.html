@@ -65,22 +65,26 @@
   function table(title,rows){let h='<div class="modeTitle"><strong>'+title+'</strong><span>CAMERA • FIRING • GYRO</span></div><div class="tablewrap"><table><thead><tr><th>SCOPE</th><th>CAM</th><th>FIRE</th><th>GYRO</th></tr></thead><tbody>';rows.forEach(r=>h+='<tr><td>'+escapeHtml(r.scope)+'</td><td class="val">'+r.camera+'</td><td class="val">'+r.firing+'</td><td class="val">'+(r.gyroscope||'OFF')+'</td></tr>');return h+'</tbody></table></div>'}
   function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function renderMatrix(d){$('matrix').className='';$('baseVal').textContent=$('base').value;$('fovVal').textContent=$('fov').value;$('scoreLabel').textContent='SYNC SCORE '+d.sync_score+' / 100';let h='';if(d.multiplayer)h+=table('MULTIPLAYER',d.multiplayer);if(d.battle_royale)h+=table('BATTLE ROYALE',d.battle_royale);$('matrix').innerHTML=h}
-  async function requireFreshPaidAccess(){const seq=sessionSequence,userId=currentUser?.id;if(!isPro||!lastResult||!userId)return false;let allowed=false;try{allowed=await checkEntitlement()}catch(_){}if(seq!==sessionSequence||currentUser?.id!==userId)return false;if(allowed&&isPro)return true;isPro=false;lastResult=null;calcSequence++;clearTimeout(calcTimer);$('matrix').replaceChildren();$('copyBtn').disabled=true;$('exportBtn').disabled=true;renderAccess();notice('Paid access could not be verified. Results are locked until connection and access are restored.','bad');return false}
+  async function requireFreshPaidAccess(){const seq=sessionSequence,userId=currentUser?.id,result=lastResult,calculation=calcSequence;if(!isPro||!result||!userId)return false;let allowed=false;try{allowed=await checkEntitlement()}catch(_){}if(seq!==sessionSequence||currentUser?.id!==userId)return false;if(result!==lastResult||calculation!==calcSequence)return false;if(allowed&&isPro)return true;isPro=false;lastResult=null;calcSequence++;clearTimeout(calcTimer);$('matrix').replaceChildren();$('copyBtn').disabled=true;$('exportBtn').disabled=true;renderAccess();notice('Paid access could not be verified. Results are locked until connection and access are restored.','bad');return false}
   function configText(){if(!isPro||!lastResult)throw new Error('paid_access_required');const p=inputPayload(),lines=['RANDA.MKCOOL AIM SYNC CONFIG','Sync Score: '+lastResult.sync_score+'/100','Base Sensitivity: '+p.base,'FOV: '+p.fov,'Rotation: '+$('rotation').selectedOptions[0].text,''];const add=(name,rows)=>{lines.push(name,'SCOPE | CAMERA | FIRING | GYRO');rows.forEach(r=>lines.push(r.scope+' | '+r.camera+' | '+r.firing+' | '+(r.gyroscope||'OFF')));lines.push('')};if(lastResult.multiplayer)add('MULTIPLAYER',lastResult.multiplayer);if(lastResult.battle_royale)add('BATTLE ROYALE',lastResult.battle_royale);return lines.join('\n')}
   async function copyConfig(){
     if(!isPro||!lastResult||!await requireFreshPaidAccess())return;
+    const seq=sessionSequence,userId=currentUser?.id,calculation=calcSequence,result=lastResult;
+    const current=()=>isPro&&sessionSequence===seq&&currentUser?.id===userId&&calcSequence===calculation&&lastResult===result;
+    if(!current())return;
     const value=configText();
     try{
       if(!navigator.clipboard?.writeText)throw new Error('Clipboard API unavailable');
       await navigator.clipboard.writeText(value);
-      snack('Complete paid config copied');
+      if(current())snack('Complete paid config copied');
     }catch(_){
-      if(!isPro||!lastResult)return;
+      if(!current())return;
       const t=document.createElement('textarea');
       let copied=false;
       try{t.value=value;document.body.appendChild(t);t.select();copied=document.execCommand('copy')===true}
       catch(_){}
       finally{t.remove()}
+      if(!current())return;
       if(copied)snack('Complete paid config copied');
       else notice('Copy failed. Please retry or use a supported secure browser.','bad');
     }
