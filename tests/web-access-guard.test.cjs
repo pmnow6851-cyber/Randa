@@ -74,7 +74,7 @@ function harness() {
   };
   const exposure = [
     'globalThis.__randaTest = {',
-    ' setPaid(userId = "user-a") { currentUser = { id: userId, email: "synthetic@example.test" }; accessToken = "synthetic-token"; isPro = true; lastResult = { sync_score: 90, engine_version: "test-only", multiplayer: [{scope:"Standard",camera:11,firing:12,gyroscope:13}] }; },',
+    ' setPaid(userId = "user-a") { currentUser = { id: userId }; accessToken = "synthetic-token"; isPro = true; lastResult = { sync_score: 90, engine_version: "test-only", multiplayer: [{scope:"Standard",camera:11,firing:12,gyroscope:13}] }; },',
     ' setUnpaid() { isPro = false; lastResult = null; },',
     ' switchUser() { sessionSequence++; calcSequence++; currentUser = {id:"user-b"}; accessToken = "synthetic-new-token"; isPro = true; lastResult = {sync_score:91,multiplayer:[{scope:"Standard",camera:21,firing:22,gyroscope:23}]}; },',
     ' beginCalculation() { calcSequence++; lastResult = null; },',
