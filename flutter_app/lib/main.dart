@@ -308,7 +308,7 @@ class _AimSyncHomeState extends State<AimSyncHome>
     if (_userId.isEmpty || _accessToken.isEmpty) return false;
     final query = Uri.encodeQueryComponent(_userId);
     final uri = Uri.parse(
-      '$_supabaseUrl/rest/v1/access_entitlements?select=tier,status&user_id=eq.$query&limit=1',
+      '$_supabaseUrl/rest/v1/access_entitlements?select=tier,status&user_id=eq.$query&tier=eq.pro&status=eq.active&limit=1',
     );
     Future<http.Response> call() => _client.get(
           uri,
