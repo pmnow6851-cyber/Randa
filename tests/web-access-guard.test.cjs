@@ -79,7 +79,7 @@ function harness() {
     ' switchUser() { sessionSequence++; calcSequence++; currentUser = {id:"user-b"}; accessToken = "synthetic-new-token"; isPro = true; lastResult = {sync_score:91,multiplayer:[{scope:"Standard",camera:21,firing:22,gyroscope:23}]}; },',
     ' beginCalculation() { calcSequence++; lastResult = null; },',
     ' getState() { return { isPro, hasResult: !!lastResult, calcSequence }; },',
-    ' copyConfig, exportJson',
+    ' copyConfig, exportJson, queueCalculation',
     '};',
   ].join('\n');
   vm.runInNewContext(script[1].replace(boot, exposure), context, { timeout: 1500 });
@@ -176,4 +176,32 @@ test('export uses a fresh entitlement read and produces no file after revocation
   h.flags.status = 'revoked';
   await h.app.exportJson();
   assert.equal(h.calls.downloads.length, 1);
+});
+
+test('editing an input immediately clears obsolete results during the debounce window', async () => {
+  const h = harness();
+  h.app.setPaid();
+  h.elements.get('base').value = '190';
+  h.app.queueCalculation();
+  assert.equal(h.app.getState().hasResult, false);
+  assert.equal(h.elements.get('copyBtn').disabled, true);
+  assert.equal(h.elements.get('exportBtn').disabled, true);
+  await h.app.copyConfig();
+  await h.app.exportJson();
+  assert.equal(h.calls.fetch.length, 0);
+  assert.equal(h.calls.writes.length, 0);
+  assert.equal(h.calls.downloads.length, 0);
+});
+
+test('editing inputs while copy entitlement is pending blocks the old result', async () => {
+  const h = harness();
+  h.app.setPaid();
+  let releaseServer;
+  h.flags.serverWait = new Promise(resolve => { releaseServer = resolve; });
+  const pending = h.app.copyConfig();
+  h.app.queueCalculation();
+  releaseServer();
+  await pending;
+  assert.equal(h.calls.writes.length, 0);
+  assert.equal(h.app.getState().hasResult, false);
 });
