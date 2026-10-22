@@ -6,7 +6,9 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const script = html.match(/<script>([\s\S]*?)<\/script>/);
+const inlineScriptPattern = /<script>([\s\S]*?)<\/script>/i;
+assert.equal('<SCRIPT>synthetic</SCRIPT>'.match(inlineScriptPattern)?.[1], 'synthetic', 'HTML tags must be matched case-insensitively');
+const script = html.match(inlineScriptPattern);
 assert.ok(script, 'The production app must contain its inline script');
 const boot = '(async()=>{renderAccess();await checkHealth();await restoreSession();await handleReturn()})();';
 assert.ok(script[1].includes(boot), 'The harness must replace only the live startup call');
