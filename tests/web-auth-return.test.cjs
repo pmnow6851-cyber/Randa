@@ -96,7 +96,7 @@ test('unrelated application hash is left unchanged', () => {
 
 test('sign-up sends the exact official RANDA redirect rather than localhost', async () => {
   const h = makeHarness();
-  h.elements.set('email', { value: 'owner@example.test' });
+  h.elements.set('email', { value: 'synthetic-test-user@example.com' });
   h.elements.set('password', { value: 'synthetic-password-for-test' });
   await h.app.signUp();
   assert.equal(h.requests.length, 1);
@@ -117,7 +117,7 @@ test('resend validates email and does not fire for invalid input', async () => {
 
 test('resend requests a signup email against only the official redirect', async () => {
   const h = makeHarness();
-  h.elements.set('email', { value: 'owner@example.test' });
+  h.elements.set('email', { value: 'synthetic-test-user@example.com' });
   await h.app.resendConfirmation();
   assert.equal(h.requests.length, 1);
   const r = h.requests[0];
