@@ -6,7 +6,9 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const match = html.match(/<script>([\s\S]*?)<\/script>/);
+const inlineScriptPattern = /<script>([\s\S]*?)<\/script>/i;
+assert.equal('<SCRIPT>synthetic</SCRIPT>'.match(inlineScriptPattern)?.[1], 'synthetic', 'HTML tags must be matched case-insensitively');
+const match = html.match(inlineScriptPattern);
 assert.ok(match, 'Expected production inline app script');
 const startup = /\(async\(\)=>\{const authReturn=consumeAuthReturn\(\);[^\n]*\}\)\(\);/;
 assert.match(match[1], startup, 'Tests must replace only the live startup statement');
