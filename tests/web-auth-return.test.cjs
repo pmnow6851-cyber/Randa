@@ -13,7 +13,7 @@ assert.ok(match, 'Expected production inline app script');
 const startup = /\(async\(\)=>\{const authReturn=consumeAuthReturn\(\);[^\n]*\}\)\(\);/;
 assert.match(match[1], startup, 'Tests must replace only the live startup statement');
 
-function makeHarness(hash = '') {
+function makeHarness(hash = '', storageFailure = '') {
   const elements = new Map();
   const requests = [];
   const historyCalls = [];
@@ -31,8 +31,8 @@ function makeHarness(hash = '') {
     return elements.get(id);
   }
   const storage = {
-    getItem(key) { return session.get(key) || null; },
-    setItem(key, value) { session.set(key, value); },
+    getItem(key) { if (storageFailure === 'read') throw new Error('Storage unavailable'); return session.get(key) || null; },
+    setItem(key, value) { if (storageFailure === 'write' || (storageFailure === 'refresh-write' && key === 'RANDA_REFRESH_TOKEN_V1')) throw new Error('Storage unavailable'); session.set(key, value); },
     removeItem(key) { session.delete(key); }
   };
   const location = { hash, protocol: 'http:', pathname: '/Randa/', search: '', href: 'https://example.test/Randa/' };
@@ -56,7 +56,7 @@ function makeHarness(hash = '') {
       return { ok: true, status: 200, json: async () => ({}) };
     }
   };
-  const exposure = 'globalThis.__randaAuthTest={consumeAuthReturn,signUp,resendConfirmation,getPaid:()=>isPro};';
+  const exposure = 'globalThis.__randaAuthTest={consumeAuthReturn,signUp,resendConfirmation,getPaid:()=>isPro,getTokens:()=>[accessToken,refreshToken]};';
   vm.runInNewContext(match[1].replace(startup, exposure), context, { timeout: 1500 });
   assert.ok(context.__randaAuthTest, 'Test hook must be installed');
   return { app: context.__randaAuthTest, elements, requests, historyCalls, session, location };
@@ -96,6 +96,35 @@ test('unrelated application hash is left unchanged', () => {
   assert.equal(h.session.size, 0);
 });
 
+for (const hash of ['#refresh_token=synthetic-refresh', '#error_code=otp_expired', '#error_description=invalid', '#token_type=bearer&expires_in=3600&type=signup']) {
+  test('incomplete auth fragment is scrubbed without unlocking: ' + hash.split('=')[0], () => {
+    const h = makeHarness(hash);
+    assert.equal(h.app.consumeAuthReturn(), hash.includes('otp_expired') ? 'expired' : 'failed');
+    assert.equal(h.historyCalls[0][2], '/Randa/');
+    assert.equal(h.session.size, 0);
+    assert.equal(h.app.getPaid(), false);
+  });
+}
+
+test('blocked storage reads cannot prevent callback cleanup', () => {
+  let h;
+  assert.doesNotThrow(() => { h = makeHarness('#error=access_denied&error_code=otp_expired', 'read'); });
+  assert.equal(h.app.consumeAuthReturn(), 'expired');
+  assert.equal(h.historyCalls[0][2], '/Randa/');
+  assert.equal(h.app.getPaid(), false);
+});
+
+for (const failure of ['write', 'refresh-write']) {
+  test('failed token storage clears partial session and memory: ' + failure, () => {
+    const h = makeHarness('#access_token=synthetic-access&refresh_token=synthetic-refresh', failure);
+    assert.equal(h.app.consumeAuthReturn(), 'failed');
+    assert.equal(h.historyCalls[0][2], '/Randa/');
+    assert.equal(h.session.size, 0);
+    assert.deepEqual(Array.from(h.app.getTokens()), ['', '']);
+    assert.equal(h.app.getPaid(), false);
+  });
+}
+
 test('sign-up sends the exact official RANDA redirect rather than localhost', async () => {
   const h = makeHarness();
   h.elements.set('email', { value: 'synthetic-test-user@example.com' });
@@ -130,3 +159,4 @@ test('resend requests a signup email against only the official redirect', async 
   assert.equal(JSON.parse(r.options.body).type, 'signup');
   assert.equal(h.app.getPaid(), false);
 });
+
