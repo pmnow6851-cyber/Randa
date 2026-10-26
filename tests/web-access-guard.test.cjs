@@ -15,7 +15,7 @@ assert.ok(script[1].includes(boot), 'The harness must replace only the live star
 
 function harness() {
   const calls = { fetch: [], writes: [], downloads: [], fallbacks: 0 };
-  const flags = { status: 'active', offline: false, clipboardError: false, clipboardDeferred: null, serverWait: null, fallbackResult: false };
+  const flags = { status: 'active', offline: false, clipboardError: false, clipboardDeferred: null, serverWait: null, fallbackResult: false, entitlementRows: null };
   const elements = new Map();
   function element() {
     return {
@@ -71,6 +71,16 @@ function harness() {
       calls.fetch.push({ url, options });
       if (flags.serverWait) await flags.serverWait;
       if (flags.offline) throw new Error('Network offline');
+      if (flags.entitlementRows) {
+        const query = new URL(url).searchParams;
+        let rows = flags.entitlementRows;
+        for (const field of ['user_id', 'tier', 'status']) {
+          const filter = query.get(field);
+          if (filter?.startsWith('eq.')) rows = rows.filter(row => row[field] === filter.slice(3));
+        }
+        rows = rows.slice(0, Number(query.get('limit') ?? rows.length));
+        return { status: 200, ok: true, json: async () => rows.map(({ tier, status }) => ({ tier, status })) };
+      }
       return { status: 200, ok: true, json: async () => [{ tier: 'pro', status: flags.status }] };
     },
   };
@@ -118,6 +128,45 @@ test('revoked entitlement relocks and destroys retained paid results', async () 
   assert.equal(h.app.getState().hasResult, false);
   assert.equal(h.elements.get('copyBtn').disabled, true);
   assert.equal(h.elements.get('exportBtn').disabled, true);
+});
+
+test('an older revoked row cannot hide a later active paid grant during copy', async () => {
+  const h = harness();
+  h.app.setPaid();
+  h.flags.entitlementRows = [
+    { user_id: 'user-a', tier: 'pro', status: 'revoked' },
+    { user_id: 'user-a', tier: 'pro', status: 'active' },
+  ];
+  await h.app.copyConfig();
+  assert.equal(h.calls.writes.length, 1);
+  assert.equal(h.app.getState().isPro, true);
+});
+
+test('an unrelated free-tier row cannot hide a later active paid grant during export', async () => {
+  const h = harness();
+  h.app.setPaid();
+  h.flags.entitlementRows = [
+    { user_id: 'user-a', tier: 'free', status: 'active' },
+    { user_id: 'user-a', tier: 'pro', status: 'active' },
+  ];
+  await h.app.exportJson();
+  assert.equal(h.calls.downloads.length, 1);
+  assert.equal(h.app.getState().isPro, true);
+});
+
+test('another account\'s active grant cannot unlock a revoked account', async () => {
+  const h = harness();
+  h.app.setPaid();
+  h.flags.entitlementRows = [
+    { user_id: 'user-b', tier: 'pro', status: 'active' },
+    { user_id: 'user-a', tier: 'pro', status: 'revoked' },
+  ];
+  await h.app.copyConfig();
+  await h.app.exportJson();
+  assert.equal(h.calls.writes.length, 0);
+  assert.equal(h.calls.downloads.length, 0);
+  assert.equal(h.app.getState().isPro, false);
+  assert.equal(h.app.getState().hasResult, false);
 });
 
 test('failed network verification blocks copy and export', async () => {
