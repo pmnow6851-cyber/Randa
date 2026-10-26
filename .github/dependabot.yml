@@ -16,8 +16,7 @@ updates:
         applies-to: "security-updates"
         patterns:
           - "github/codeql-action*"
-    labels:
-      - "dependencies"
+    labels: []
     commit-message:
       prefix: "chore(actions)"
   
@@ -29,7 +28,6 @@ updates:
       time: "03:00"
       timezone: "Etc/UTC"
     open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
+    labels: []
     commit-message:
       prefix: "chore(pub)"
