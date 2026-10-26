@@ -14,7 +14,9 @@ This folder contains the Android Flutter client for the existing paid RANDA.MKCO
 
 ## Local Android build
 
-From this `flutter_app` directory with Flutter 3.47.2 installed:
+From this `flutter_app` directory with Flutter 3.47.8 installed:
+
+Flutter 3.47.8 is the minimum patched stable SDK identified in [GHSA-frr6-h895-5pxp](https://github.com/dart-lang/sdk/security/advisories/GHSA-frr6-h895-5pxp) for the Android TLS certificate-validation issue (patched Dart SDK: 3.13.7). Rebuild Android artifacts with the patched SDK; changing this pin alone does not update an installed app. Signing, physical-device verification and owner release approval remain separate gates.
 
 ```bash
 flutter pub get
