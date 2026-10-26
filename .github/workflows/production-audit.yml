@@ -35,6 +35,28 @@ jobs:
           set -euo pipefail
           python scripts/randa_audit.py --output /tmp/RANDA_AUDIT_REPORT.md --log /tmp/randa-audit-log.md
 
+      - name: Refuse mismatched CodeQL action pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          workflow = Path(".github/workflows/codeql.yml").read_text(encoding="utf-8")
+          matches = re.findall(
+              r"(?m)^[ \t]*uses[ \t]*:[ \t]*github/codeql-action/(init|analyze)@([0-9a-f]{40})(?:[ \t]|$)",
+              workflow,
+          )
+          if (len(matches) != 2 or
+                  {name for name, _ in matches} != {"init", "analyze"} or
+                  len({sha for _, sha in matches}) != 1):
+              raise SystemExit(
+                  "Security gate failed: CodeQL init and analyze must both use the same full SHA."
+              )
+          print("CodeQL init/analyze pins matched.")
+          PY
+
       - name: Validate canonical production state
         shell: bash
         run: |
