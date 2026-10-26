@@ -13,7 +13,7 @@ assert.ok(match, 'Expected production inline app script');
 const startup = /\(async\(\)=>\{const authReturn=consumeAuthReturn\(\);[^\n]*\}\)\(\);/;
 assert.match(match[1], startup, 'Tests must replace only the live startup statement');
 
-function makeHarness(hash = '', storageFailure = '') {
+function makeHarness(hash = '', storageFailure = '', { runStartup = false, failRequests = false } = {}) {
   const elements = new Map();
   const requests = [];
   const historyCalls = [];
@@ -31,9 +31,9 @@ function makeHarness(hash = '', storageFailure = '') {
     return elements.get(id);
   }
   const storage = {
-    getItem(key) { if (storageFailure === 'read') throw new Error('Storage unavailable'); return session.get(key) || null; },
-    setItem(key, value) { if (storageFailure === 'write' || (storageFailure === 'refresh-write' && key === 'RANDA_REFRESH_TOKEN_V1')) throw new Error('Storage unavailable'); session.set(key, value); },
-    removeItem(key) { session.delete(key); }
+    getItem(key) { if (storageFailure === 'read' || storageFailure === 'all') throw new Error('Storage unavailable'); return session.get(key) || null; },
+    setItem(key, value) { if (storageFailure === 'all' || storageFailure === 'write' || (storageFailure === 'refresh-write' && key === 'RANDA_REFRESH_TOKEN_V1')) throw new Error('Storage unavailable'); session.set(key, value); },
+    removeItem(key) { if (storageFailure === 'all') throw new Error('Storage unavailable'); session.delete(key); }
   };
   const location = { hash, protocol: 'http:', pathname: '/Randa/', search: '', href: 'https://example.test/Randa/' };
   const context = {
@@ -53,14 +53,44 @@ function makeHarness(hash = '', storageFailure = '') {
     setTimeout() { return 1; }, clearTimeout() {},
     fetch: async (url, options = {}) => {
       requests.push({ url, options });
+      if (failRequests) throw new TypeError('Network unavailable');
       return { ok: true, status: 200, json: async () => ({}) };
     }
   };
   const exposure = 'globalThis.__randaAuthTest={consumeAuthReturn,signUp,resendConfirmation,getPaid:()=>isPro,getTokens:()=>[accessToken,refreshToken]};';
-  vm.runInNewContext(match[1].replace(startup, exposure), context, { timeout: 1500 });
+  const script = match[1].replace(startup, original => exposure + (runStartup ? 'globalThis.__randaStartup=' + original : ''));
+  vm.runInNewContext(script, context, { timeout: 1500 });
   assert.ok(context.__randaAuthTest, 'Test hook must be installed');
-  return { app: context.__randaAuthTest, elements, requests, historyCalls, session, location };
+  return { app: context.__randaAuthTest, startup: context.__randaStartup, elements, requests, historyCalls, session, location };
 }
+
+test('full startup shows expired-link recovery when all session storage is blocked', async () => {
+  const h = makeHarness('#error=access_denied&error_code=otp_expired', 'all', { runStartup: true });
+  await assert.doesNotReject(h.startup);
+  assert.equal(h.historyCalls[0][2], '/Randa/');
+  assert.match(h.elements.get('notice').textContent, /expired|already used/i);
+  assert.equal(h.app.getPaid(), false);
+  assert.deepEqual(Array.from(h.app.getTokens()), ['', '']);
+});
+
+test('full startup shows failed-link recovery when callback token storage is blocked', async () => {
+  const h = makeHarness('#access_token=synthetic-access&refresh_token=synthetic-refresh', 'all', { runStartup: true });
+  await assert.doesNotReject(h.startup);
+  assert.equal(h.historyCalls[0][2], '/Randa/');
+  assert.match(h.elements.get('notice').textContent, /could not be processed/i);
+  assert.equal(h.app.getPaid(), false);
+  assert.deepEqual(Array.from(h.app.getTokens()), ['', '']);
+});
+
+test('full startup keeps paid results locked when confirmation cannot reach authentication', async () => {
+  const h = makeHarness('#access_token=synthetic-access&refresh_token=synthetic-refresh', '', { runStartup: true, failRequests: true });
+  await assert.doesNotReject(h.startup);
+  assert.equal(h.historyCalls[0][2], '/Randa/');
+  assert.match(h.elements.get('notice').textContent, /sign in/i);
+  assert.equal(h.app.getPaid(), false);
+  assert.equal(h.elements.get('copyBtn').disabled, true);
+  assert.equal(h.elements.get('exportBtn').disabled, true);
+});
 
 test('expired Supabase confirmation is recognised and sensitive hash is removed', () => {
   const h = makeHarness('#error=access_denied&error_code=otp_expired&error_description=expired');
