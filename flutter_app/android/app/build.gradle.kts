@@ -70,6 +70,11 @@ android {
     }
 }
 
+// Match Java bytecode compatibility instead of inheriting the runner JDK.
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile>().configureEach {
+    compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+}
+
 flutter {
     source = "../.."
 }

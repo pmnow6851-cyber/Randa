@@ -53,10 +53,10 @@ jobs:
           test -f android/app/src/main/kotlin/systems/randamkcool/randa_mkcool_aim_sync/MainActivity.kt
           test -f android/gradle/wrapper/gradle-wrapper.properties
 
-      - name: Install Flutter 3.47.2
+      - name: Install Flutter 3.47.8
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
-          flutter-version: '3.47.2'
+          flutter-version: '3.47.8'
           channel: stable
           cache: true
 
@@ -86,9 +86,13 @@ jobs:
         working-directory: flutter_app
         run: flutter analyze
 
+      - name: Test verified configuration gate
+        working-directory: flutter_app
+        run: flutter test --dart-define=RANDA_DISTRIBUTION_CHANNEL=google_play
+
       - name: Build debug APK from committed Android project
         working-directory: flutter_app
-        run: flutter build apk --debug
+        run: flutter build apk --debug --dart-define=RANDA_DISTRIBUTION_CHANNEL=google_play
 
       - name: Build release Android App Bundle from committed Android project
         working-directory: flutter_app
