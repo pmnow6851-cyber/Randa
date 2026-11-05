@@ -13,10 +13,11 @@ assert.ok(match, 'Expected production inline app script');
 const startup = /\(async\(\)=>\{const authReturn=consumeAuthReturn\(\);[^\n]*\}\)\(\);/;
 assert.match(match[1], startup, 'Tests must replace only the live startup statement');
 
-function makeHarness(hash = '', storageFailure = '', { runStartup = false, failRequests = false } = {}) {
+function makeHarness(hash = '', storageFailure = '', { runStartup = false, failRequests = false, failHistory = false } = {}) {
   const elements = new Map();
   const requests = [];
   const historyCalls = [];
+  const redirects = [];
   const session = new Map();
   function el(id) {
     if (!elements.has(id)) {
@@ -35,7 +36,7 @@ function makeHarness(hash = '', storageFailure = '', { runStartup = false, failR
     setItem(key, value) { if (storageFailure === 'all' || storageFailure === 'write' || (storageFailure === 'refresh-write' && key === 'RANDA_REFRESH_TOKEN_V1')) throw new Error('Storage unavailable'); session.set(key, value); },
     removeItem(key) { if (storageFailure === 'all') throw new Error('Storage unavailable'); session.delete(key); }
   };
-  const location = { hash, protocol: 'http:', pathname: '/Randa/', search: '', href: 'https://example.test/Randa/' };
+  const location = { hash, protocol: 'http:', pathname: '/Randa/', search: '', href: 'https://example.test/Randa/', replace(url) { redirects.push(url); } };
   const context = {
     document: {
       getElementById: el,
@@ -45,7 +46,7 @@ function makeHarness(hash = '', storageFailure = '', { runStartup = false, failR
     },
     window: { addEventListener() {} },
     navigator: {},
-    history: { replaceState(...args) { historyCalls.push(args); } },
+    history: { replaceState(...args) { if (failHistory) throw new Error("History unavailable"); historyCalls.push(args); } },
     location,
     sessionStorage: storage,
     localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
@@ -61,7 +62,7 @@ function makeHarness(hash = '', storageFailure = '', { runStartup = false, failR
   const script = match[1].replace(startup, original => exposure + (runStartup ? 'globalThis.__randaStartup=' + original : ''));
   vm.runInNewContext(script, context, { timeout: 1500 });
   assert.ok(context.__randaAuthTest, 'Test hook must be installed');
-  return { app: context.__randaAuthTest, startup: context.__randaStartup, elements, requests, historyCalls, session, location };
+  return { app: context.__randaAuthTest, startup: context.__randaStartup, elements, requests, historyCalls, session, location, redirects };
 }
 
 test('full startup shows expired-link recovery when all session storage is blocked', async () => {
@@ -190,3 +191,13 @@ test('resend requests a signup email against only the official redirect', async 
   assert.equal(h.app.getPaid(), false);
 });
 
+
+
+test('blocked history redirects to a clean URL without storing callback credentials', () => {
+  const h = makeHarness('#access_token=synthetic-access&refresh_token=synthetic-refresh', '', { failHistory: true });
+  assert.equal(h.app.consumeAuthReturn(), 'failed');
+  assert.deepEqual(h.redirects, ['/Randa/']);
+  assert.equal(h.session.size, 0);
+  assert.deepEqual(Array.from(h.app.getTokens()), ['', '']);
+  assert.equal(h.app.getPaid(), false);
+});
